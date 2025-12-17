@@ -63,7 +63,7 @@ extend-exclude = [
     "third_party",
 ]
 src = ["sharp"]
-target-version = "py313"
+target-version = "py312"
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
