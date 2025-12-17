@@ -87,8 +87,8 @@ def render_gaussians(
 
     intrinsics = torch.tensor(
         [
-            [f_px, 0, (width - 1) / 2., 0],
-            [0, f_px, (height - 1) / 2., 0],
+            [f_px, 0, (width - 1) / 2.0, 0],
+            [0, f_px, (height - 1) / 2.0, 0],
             [0, 0, 1, 0],
             [0, 0, 0, 1],
         ],
