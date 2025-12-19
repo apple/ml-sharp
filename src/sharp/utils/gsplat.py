@@ -118,7 +118,7 @@ class GSplatRenderer(nn.Module):
 
             # Colorspace conversion.
             if self.color_space == "sRGB":
-                pass
+                rendered_color = cs_utils.linearRGB2sRGB(rendered_color)
             elif self.color_space == "linearRGB":
                 rendered_color = cs_utils.linearRGB2sRGB(rendered_color)
             else:
