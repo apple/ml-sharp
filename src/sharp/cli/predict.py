@@ -26,6 +26,8 @@ from sharp.utils.gaussians import (
     Gaussians3D,
     SceneMetaData,
     save_ply,
+    save_splat,
+    save_sog,
     unproject_gaussians,
 )
 
@@ -67,6 +69,15 @@ DEFAULT_MODEL_URL = "https://ml-site.cdn-apple.com/models/sharp/sharp_2572gikvuh
     help="Whether to render trajectory for checkpoint.",
 )
 @click.option(
+    "-f",
+    "--format",
+    "export_formats",
+    type=click.Choice(["ply", "splat", "sog"], case_sensitive=False),
+    multiple=True,
+    default=["ply"],
+    help="Output format(s). Can specify multiple: -f ply -f splat -f sog",
+)
+@click.option(
     "--device",
     type=str,
     default="default",
@@ -78,11 +89,15 @@ def predict_cli(
     output_path: Path,
     checkpoint_path: Path,
     with_rendering: bool,
+    export_formats: tuple[str, ...],
     device: str,
     verbose: bool,
 ):
     """Predict Gaussians from input images."""
     logging_utils.configure(logging.DEBUG if verbose else logging.INFO)
+
+    # Normalize export formats to lowercase
+    export_formats = tuple(fmt.lower() for fmt in export_formats)
 
     extensions = io.get_supported_image_extensions()
 
@@ -145,7 +160,16 @@ def predict_cli(
         gaussians = predict_image(gaussian_predictor, image, f_px, torch.device(device))
 
         LOGGER.info("Saving 3DGS to %s", output_path)
-        save_ply(gaussians, f_px, (height, width), output_path / f"{image_path.stem}.ply")
+        for fmt in export_formats:
+            if fmt == "ply":
+                save_ply(gaussians, f_px, (height, width), output_path / f"{image_path.stem}.ply")
+                LOGGER.info("Saved PLY: %s", output_path / f"{image_path.stem}.ply")
+            elif fmt == "splat":
+                save_splat(gaussians, f_px, (height, width), output_path / f"{image_path.stem}.splat")
+                LOGGER.info("Saved SPLAT: %s", output_path / f"{image_path.stem}.splat")
+            elif fmt == "sog":
+                save_sog(gaussians, f_px, (height, width), output_path / f"{image_path.stem}.sog")
+                LOGGER.info("Saved SOG: %s", output_path / f"{image_path.stem}.sog")
 
         if with_rendering:
             output_video_path = (output_path / image_path.stem).with_suffix(".mp4")
