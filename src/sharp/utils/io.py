@@ -58,7 +58,7 @@ def load_rgb(
     if f_35mm is None or f_35mm < 1:
         f_35mm = img_exif.get("FocalLength", None)
         if f_35mm is None:
-            LOGGER.warn(f"Did not find focallength in exif data of {path} - Setting to 30mm.")
+            LOGGER.warning(f"Did not find focallength in exif data of {path} - Setting to 30mm.")
             f_35mm = 30.0
         if f_35mm < 10.0:
             LOGGER.info("Found focal length below 10mm, assuming it's not for 35mm.")
