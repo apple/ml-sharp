@@ -2,6 +2,8 @@
 
 [![Project Page](https://img.shields.io/badge/Project-Page-green)](https://apple.github.io/ml-sharp/)
 [![arXiv](https://img.shields.io/badge/arXiv-2512.10685-b31b1b.svg)](https://arxiv.org/abs/2512.10685)
+[![Model](https://img.shields.io/badge/Hugging%20Face-Model-yellow?logo=huggingface)](https://huggingface.co/apple/Sharp)
+[![Demo](https://img.shields.io/badge/Hugging%20Face-Demo-yellow?logo=huggingface)](https://huggingface.co/spaces/ronedgecomb/ml-sharp)
 
 This software project accompanies the research paper: _Sharp Monocular View Synthesis in Less Than a Second_
 by _Lars Mescheder, Wei Dong, Shiwei Li, Xuyang Bai, Marcel Santos, Peiyun Hu, Bruno Lecouat, Mingmin Zhen, Amaël Delaunoy,
