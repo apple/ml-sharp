@@ -89,6 +89,21 @@ If you find our work useful, please cite the following paper:
 
 Our codebase is built using multiple opensource contributions, please see [ACKNOWLEDGEMENTS](ACKNOWLEDGEMENTS) for more details.
 
+## Web Interface (One-Click Setup)
+
+For a simple web interface where you can upload images and download 3D Gaussians:
+
+**macOS:** Double-click `start.command` in Finder.
+
+This will automatically:
+- Create the conda environment if it doesn't exist
+- Install all dependencies if needed
+- Start the web server at http://localhost:8000
+
+![](data/web-dark.png)
+![](data/web-light.png)
+
+
 ## License
 
 Please check out the repository [LICENSE](LICENSE) before using the provided code and
