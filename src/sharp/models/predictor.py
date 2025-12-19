@@ -140,7 +140,7 @@ class RGBGaussianPredictor(nn.Module):
         #         +------+-------+
         #                |
         #        +-------+--------+     # Optionally align monodepth to ground truth
-        #        |depth_alignement|     # with a local scale map.
+        #        |depth_alignment|     # with a local scale map.
         #        +-------+--------+
         #                |
         #                v
@@ -169,7 +169,7 @@ class RGBGaussianPredictor(nn.Module):
         #
 
         # The logic to decide whether to align monodepth to the ground truth is wrapped
-        # in a submodule 'DepthAlignement' to facilitate the symbolic tracing of the
+        # in a submodule 'DepthAlignment' to facilitate the symbolic tracing of the
         # predictor. This way, the depth alignment submodule containing the conditional
         # logic can be excluded during the tracing and the graph of the predictors is
         # static.

@@ -114,7 +114,7 @@ class MultiLayerInitializer(nn.Module):
         self.feature_input_stop_grad = feature_input_stop_grad
 
     def prepare_feature_input(self, image: torch.Tensor, depth: torch.Tensor) -> torch.Tensor:
-        """Prepare the feature input to the Guassian predictor."""
+        """Prepare the feature input to the Gaussian predictor."""
         if self.feature_input_stop_grad:
             image = image.detach()
             depth = depth.detach()
