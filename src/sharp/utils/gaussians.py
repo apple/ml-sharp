@@ -348,6 +348,14 @@ def save_ply(
     gaussians: Gaussians3D, f_px: float, image_shape: tuple[int, int], path: Path
 ) -> PlyData:
     """Save a predicted Gaussian3D to a ply file."""
+    #Rotate model 180 degrees
+    LOGGER.info("Applying automatic 180-degree rotation fix to bring model to front.")
+    transform_fix = torch.tensor([
+        [-1.0, 0.0,  0.0, 0.0],
+        [ 0.0, 1.0,  0.0, 0.0],
+        [ 0.0, 0.0, -1.0, 0.0]
+    ], device=gaussians.mean_vectors.device)
+    gaussians = apply_transform(gaussians, transform_fix)
 
     def _inverse_sigmoid(tensor: torch.Tensor) -> torch.Tensor:
         return torch.log(tensor / (1.0 - tensor))
