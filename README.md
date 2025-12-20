@@ -93,3 +93,35 @@ Our codebase is built using multiple opensource contributions, please see [ACKNO
 
 Please check out the repository [LICENSE](LICENSE) before using the provided code and
 [LICENSE_MODEL](LICENSE_MODEL) for the released models.
+
+## Docker
+
+Build the image locally (run from the repository root):
+
+```bash
+docker build -t ml-sharp .
+```
+
+Run the CLI inside the container. Mount the repository and the `data/` directory so outputs persist locally:
+
+```bash
+docker run --rm -it \
+  -v "$PWD":/app \
+  -v "$PWD/data":/app/data \
+  ml-sharp \
+  python -m sharp.cli.predict --help
+```
+
+Example: predict using the mounted `data/` input and write outputs to `data/output`:
+
+```bash
+docker run --rm -it \
+  -v "$PWD":/app \
+  -v "$PWD/data":/app/data \
+  ml-sharp \
+  python -m sharp.cli.predict -i data/input_images -o data/output
+```
+
+Notes:
+- If you need GPU support, use a GPU-enabled base image and the appropriate CUDA toolchain, or prefer running natively with CUDA and PyTorch.
+- The default image is a minimal CPU image intended for convenience and reproduction on typical development machines.
