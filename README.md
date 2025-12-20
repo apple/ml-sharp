@@ -50,7 +50,7 @@ wget https://ml-site.cdn-apple.com/models/sharp/sharp_2572gikvuh.pt
 To use a manually downloaded checkpoint, specify it with the `-c` flag:
 
 ```
-sharp predict -i /path/to/input/images -o /path/to/output/gaussians -c sharp_2572gikvuh.pt
+sharp predict -i input -o output/gaussians -c sharp_2572gikvuh.pt
 ```
 
 The results will be 3D gaussian splats (3DGS) in the output folder. The 3DGS `.ply` files are compatible to various public 3DGS renderers. We follow the OpenCV coordinate convention (x right, y down, z forward). The 3DGS scene center is roughly at (0, 0, +z). When dealing with 3rdparty renderers, please scale and rotate to re-center the scene accordingly.
@@ -88,6 +88,31 @@ If you find our work useful, please cite the following paper:
 ## Acknowledgements
 
 Our codebase is built using multiple opensource contributions, please see [ACKNOWLEDGEMENTS](ACKNOWLEDGEMENTS) for more details.
+
+## Spatial Computing & Vision Pro Integration
+
+SHARP's single-image 3D Gaussian output can be integrated into Apple Vision Pro workflows using complementary tools from our [Spatial Computing & 3D Resources](Spatial%20Computing%20%26%203D%20Resources.md) list.
+
+### Asset Pipeline
+
+```
+[Photo] → SHARP → [3DGS .ply] → Convert3D → [USDZ/GLB] → Vision Pro / Safari
+```
+
+### Recommended Tools
+
+| Category          | Tool                                            | Usage                                         |
+| ----------------- | ----------------------------------------------- | --------------------------------------------- |
+| **WebXR Viewer**  | [Google Model Viewer](https://modelviewer.dev/) | Display converted assets in Safari (visionOS) |
+| **Converter**     | [Convert3D](https://convert3d.org/convert/glb)  | `.ply` → `.glb` → `.usdz` conversion          |
+| **AI Generation** | [Zoo Text-to-CAD](https://zoo.dev/text-to-cad)  | Complement SHARP with procedural models       |
+| **Reference**     | [Dimensions.com](https://www.dimensions.com/)   | Real-world dimensions for proper scaling      |
+
+### Notes
+
+- **Video Rendering**: Currently requires CUDA GPU (MPS not supported for `--render`)
+- **Format Conversion**: SHARP outputs `.ply` files; conversion to USDZ is needed for Vision Pro
+- **Coordinate System**: OpenCV convention (x right, y down, z forward) - adjust for third-party renderers
 
 ## License
 
