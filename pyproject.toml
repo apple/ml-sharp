@@ -3,6 +3,7 @@ name = "sharp"
 version = "0.1"
 description = "Inference/Network/Model code for SHARP view synthesis model."
 readme = "README.md"
+requires-python = ">=3.9"
 dependencies = [
   "click",
   "gsplat",
