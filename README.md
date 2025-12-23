@@ -66,6 +66,17 @@ sharp predict -i /path/to/input/images -o /path/to/output/gaussians --render
 sharp render -i /path/to/output/gaussians -o /path/to/output/renderings
 ```
 
+## Using the Docker
+
+We provide a docker image to run the code. You can start the Gradio app using
+
+```
+docker compose up --build --remove-orphans
+```
+
+The app will be available at `http://localhost:7860`.
+You need to install Docker with CUDA support in order to use the docker image.
+
 ## Evaluation
 
 Please refer to the paper for both quantitative and qualitative evaluations.
