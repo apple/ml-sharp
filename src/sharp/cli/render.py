@@ -37,7 +37,7 @@ LOGGER = logging.getLogger(__name__)
 )
 @click.option("-v", "--verbose", is_flag=True, help="Activate debug logs.")
 def render_cli(input_path: Path, output_path: Path, verbose: bool):
-    """Predict Gaussians from input images."""
+    """Render videos from predicted Gaussians with a camera trajectory (CUDA only)."""
     logging_utils.configure(logging.DEBUG if verbose else logging.INFO)
 
     if not torch.cuda.is_available():
