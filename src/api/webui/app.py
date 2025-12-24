@@ -8,12 +8,11 @@ from __future__ import annotations
 
 import logging
 import time
+import requests
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, List, Tuple, Dict
 
 import gradio as gr
-import numpy as np
-import requests
 from PIL import Image
 
 LOGGER = logging.getLogger(__name__)
@@ -22,36 +21,45 @@ LOGGER = logging.getLogger(__name__)
 API_URL = "http://localhost:8000"
 
 
-def predict_image(
-    image: Image.Image,
+def predict_batch(
+    images: List[str],
     device: str,
     render: bool,
     checkpoint_path: Optional[str] = None
-) -> Tuple[str, Optional[str], str, str]:
-    """Predict 3D Gaussians from an image using the API.
+) -> Tuple[str, str, str]:
+    """Predict 3D Gaussians from multiple images using the API.
 
     Args:
-        image: The input image.
+        images: List of input image file paths.
         device: The device to run inference on.
-        render: Whether to render the result.
+        render: Whether to render the results.
         checkpoint_path: Path to a custom model checkpoint.
 
     Returns:
         Tuple containing:
-        - Path to the generated PLY file
-        - Path to the rendered video (if enabled)
-        - Inference time
+        - Task ID for tracking progress
         - Status message
+        - Empty string (placeholder for compatibility)
     """
     try:
-        # Convert image to bytes
+        if not images:
+            return "", "Error: No images provided", ""
+
+        # Convert images to bytes
         import io
-        img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format='PNG')
-        img_byte_arr = img_byte_arr.getvalue()
+        files = []
+        for i, image_path in enumerate(images):
+            # Open image file
+            img_pil = Image.open(image_path)
+            img_byte_arr = io.BytesIO()
+            img_pil.save(img_byte_arr, format='PNG')
+            img_byte_arr = img_byte_arr.getvalue()
+            # Get original filename
+            import os
+            filename = os.path.basename(image_path)
+            files.append(("files", (filename, img_byte_arr, "image/png")))
 
         # Prepare API request
-        files = {"file": ("image.png", img_byte_arr, "image/png")}
         data = {
             "device": device,
             "render": render,
@@ -59,33 +67,97 @@ def predict_image(
         }
 
         # Send request to API
-        start_time = time.time()
-        response = requests.post(f"{API_URL}/api/predict", files=files, data=data)
-        response_time = time.time() - start_time
-
-        # Parse response
+        response = requests.post(f"{API_URL}/api/predict/batch", files=files, data=data)
         result = response.json()
 
-        if not result["success"]:
-            return "", None, "", f"Error: {result.get('error', 'Unknown error')}"
+        if "error" in result:
+            return "", f"Error: {result['error']}", ""
 
-        # Get result data
-        result_data = result["result"]
-        ply_path = result_data["gaussians_ply_path"]
-        video_path = result_data.get("render_video_path")
-        inference_time = result_data["inference_time"]
-
-        # Format results
-        ply_url = f"{API_URL}{ply_path}"
-        video_url = f"{API_URL}{video_path}" if video_path else None
-        time_str = f"Inference time: {inference_time:.2f} seconds"
-        status = f"Success! Generated {result_data['num_gaussians']} 3D Gaussians"
-
-        return ply_url, video_url, time_str, status
+        # Return task ID and status
+        task_id = result["task_id"]
+        return task_id, f"Batch prediction started. Task ID: {task_id}", ""
 
     except Exception as e:
-        LOGGER.exception(f"Prediction failed: {str(e)}")
-        return "", None, "", f"Error: {str(e)}"
+        LOGGER.exception(f"Batch prediction failed: {str(e)}")
+        return "", f"Error: {str(e)}", ""
+
+
+def check_progress(task_id: str) -> Tuple[float, str, str]:
+    """Check the progress of a batch prediction task.
+
+    Args:
+        task_id: The ID of the batch prediction task.
+
+    Returns:
+        Tuple containing:
+        - Progress percentage (0-100)
+        - Current status message
+        - Estimated time remaining
+    """
+    try:
+        # Send request to API
+        response = requests.get(f"{API_URL}/api/predict/batch/{task_id}/status")
+        result = response.json()
+
+        # Extract progress data
+        progress = result["progress"]
+        status = result["status"]
+        current_image = result.get("current_image", "")
+        processed = result["processed_images"]
+        total = result["total_images"]
+        estimated_time = result.get("estimated_time_remaining", 0)
+
+        # Format status message
+        status_msg = f"Status: {status} | Processing: {current_image} ({processed}/{total})"
+        time_remaining = f"Estimated time remaining: {estimated_time:.1f} seconds" if estimated_time else ""
+
+        return progress, status_msg, time_remaining
+
+    except Exception as e:
+        LOGGER.exception(f"Failed to check progress: {str(e)}")
+        return 0, f"Error checking progress: {str(e)}", ""
+
+
+def get_results(task_id: str) -> List[Dict]:  # pyright: ignore[reportDeprecated, reportMissingTypeArgument, reportUnknownParameterType]
+    """Get the results of a batch prediction task.
+
+    Args:·
+        task_id: The ID of the batch prediction task.
+
+    Returns:
+        List of result dictionaries containing:
+        - filename: Original filename
+        - ply_url: URL to download the PLY file
+        - video_url: URL to the rendered video (if enabled)
+        - inference_time: Inference time for the image
+        - num_gaussians: Number of 3D Gaussians generated
+    """
+    try:
+        # Send request to API
+        response = requests.get(f"{API_URL}/api/predict/batch/{task_id}/results")
+        result = response.json()
+
+        if result["status"] != "completed":
+            return [{"error": f"Task not completed. Current status: {result['status']}"}]  # pyright: ignore[reportUnknownVariableType]
+
+        # Extract results
+        batch_results = result["result"]["results"]
+        formatted_results = []
+
+        for res in batch_results:
+            formatted_results.append({
+                "filename": res["filename"],
+                "ply_url": f"{API_URL}{res['gaussians_ply_path']}",
+                "video_url": f"{API_URL}{res['render_video_path']}" if res['render_video_path'] else None,
+                "inference_time": res["inference_time"],
+                "num_gaussians": res["num_gaussians"]
+            })
+
+        return formatted_results
+
+    except Exception as e:
+        LOGGER.exception(f"Failed to get results: {str(e)}")
+        return [{"error": f"Error getting results: {str(e)}"}]
 
 
 def create_gradio_app() -> gr.Blocks:
@@ -101,15 +173,19 @@ def create_gradio_app() -> gr.Blocks:
 Generate 3D Gaussian point clouds from 2D images using the ml-sharp model.
         """)
 
-        # Input section
+        # State variables
+        task_id_state = gr.State("")
+        results_state = gr.State([])
+
+        # Input and Output sections - Now below Results section
         with gr.Row():
             with gr.Column(scale=1):
-                # Image input
-                image_input = gr.Image(
-                    type="pil",
-                    label="Upload Image",
-                    height=300,
-                    width=300
+                # Image list input
+                image_list_input = gr.Files(
+                    label="Upload Images",
+                    file_count="multiple",
+                    file_types=["image"],
+                    height=300
                 )
 
                 # Device selection
@@ -145,75 +221,117 @@ Generate 3D Gaussian point clouds from 2D images using the ml-sharp model.
 
             # Output section
             with gr.Column(scale=2):
-                # Status message
+                    # Status message
                 status_output = gr.Textbox(
                     label="Status",
                     interactive=False,
-                    placeholder="Ready to process images..."
+                    placeholder="Ready to process images...",
+                    lines=2
                 )
 
-                # Inference time
-                time_output = gr.Textbox(
-                    label="Inference Time",
-                    interactive=False
-                )
-
-                # PLY file download
-                ply_output = gr.Textbox(
-                    label="Generated PLY File",
+                # Progress details
+                progress_details = gr.Textbox(
+                    label="Progress Details",
                     interactive=False,
-                    placeholder="No PLY file generated yet"
+                    placeholder="Progress details will be shown here...",
+                    lines=3
                 )
 
-                # PLY download button
-                ply_download_button = gr.Button(
-                    "Download PLY File",
-                    variant="secondary"
-                )
+                # Add empty space to match left column height
+                # empty_space = gr.Markdown("", label="")
+                
+                with gr.Column(scale=1):
+                    # Results display with direct download buttons
+                    results_display = gr.Markdown(
+                        label="结果列表",
+                        value="点击“获取结果”按钮查看结果"
+                    )
 
-                # Video output (if enabled)
-                video_output = gr.Video(
-                    label="Rendered Video",
-                    interactive=False,
-                    visible=False
-                )
+                    # Get results button
+                    get_results_button = gr.Button(
+                        "获取结果",
+                        # variant="secondary",
+                        interactive=False
+                    )
+
+
+        # Function to continuously check progress
+        def check_progress_continuous(task_id: str) -> Tuple[str, bool]:
+            """Check progress continuously until task is completed.
+            
+            Args:
+                task_id: The task ID to check.
+                
+            Returns:
+                Tuple containing status details and whether task is completed.
+            """
+            try:
+                # Send request to API
+                response = requests.get(f"{API_URL}/api/predict/batch/{task_id}/status")
+                result = response.json()
+
+                # Extract progress data
+                status = result["status"]
+                current_image = result.get("current_image", "")
+                processed = result["processed_images"]
+                total = result["total_images"]
+
+                # Format status message
+                status_msg = f"Status: {status} | Processing: {current_image} ({processed}/{total})"
+                
+                # Check if task is completed
+                is_completed = status in ["completed", "failed"]
+                
+                return status_msg, is_completed
+            except Exception as e:
+                LOGGER.exception(f"Failed to check progress: {str(e)}")
+                return f"Error checking progress: {str(e)}", False
 
         # Set up event handlers
-        predict_button.click(
-            fn=predict_image,
-            inputs=[image_input, device_dropdown, render_checkbox, checkpoint_path],
-            outputs=[ply_output, video_output, time_output, status_output]
+        predict_button.click(  # pyright: ignore[reportUnusedCallResult]
+            fn=predict_batch,
+            inputs=[image_list_input, device_dropdown, render_checkbox, checkpoint_path],
+            outputs=[task_id_state, status_output, progress_details]
+        ).then(
+            fn=check_progress_continuous,
+            inputs=[task_id_state],
+            outputs=[progress_details, get_results_button]
+        ).then(
+            fn=lambda is_completed: gr.Button(interactive=is_completed),
+            inputs=[get_results_button],
+            outputs=[get_results_button]
         )
 
-        # Update video visibility based on render checkbox
-        render_checkbox.change(
-            fn=lambda render: gr.Video(visible=render),
-            inputs=[render_checkbox],
-            outputs=[video_output]
+        # Get results button click
+        get_results_button.click(  # pyright: ignore[reportUnusedCallResult]
+            fn=get_results,
+            inputs=[task_id_state],
+            outputs=[results_state]
+        ).then(
+            fn=lambda results: 
+                # Format results as Markdown table with direct download buttons
+                "# Results Summary\n\n" +
+                "| Filename | Gaussians | Time (s) | Actions |\n" +
+                "|----------|-----------|----------|---------|\n" +
+                "\n".join([
+                    "| {} | {:,} | {:.2f} | {}{} |".format(
+                        res['filename'],
+                        res['num_gaussians'],
+                        res['inference_time'],
+                        "[Download PLY]({})".format(res['ply_url']),
+                        " | [Download Video]({})".format(res['video_url']) if res['video_url'] else ""
+                    )
+                    for res in results
+                ]),
+            inputs=[results_state],
+            outputs=[results_display]
         )
-
-        # Add example images
-        gr.Markdown("""## Example Images
-        """)
-        with gr.Row():
-            gr.Examples(
-                examples=[
-                    "examples/example1.jpg",
-                    "examples/example2.jpg",
-                    "examples/example3.jpg"
-                ],
-                inputs=image_input,
-                outputs=[ply_output, video_output, time_output, status_output],
-                fn=predict_image,
-                cache_examples=False
-            )
 
         # Footer
-        gr.Markdown("""## About
-
-This application uses the ml-sharp model to generate 3D Gaussian point clouds from 2D images.
-The model is based on state-of-the-art computer vision techniques.
-        """)
+        gr.Markdown("""## 关于  
+此应用程序使用 ml-sharp 模型从 2D 图像生成 3D 高斯点云。
+该模型基于最先进的计算机视觉技术。
+        """) # pyright: ignore[reportUnusedCallResult]
 
     return app
 

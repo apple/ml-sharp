@@ -46,9 +46,6 @@ app.add_middleware(
 RESULTS_DIR = Path(__file__).parent.parent.parent / "tmp" / "results"
 RESULTS_DIR.mkdir(parents=True, exist_ok=True)
 
-# Mount static files directory for serving results
-app.mount("/results", StaticFiles(directory=RESULTS_DIR), name="results")
-
 # Include API routers
 app.include_router(
     predict.router,
@@ -63,6 +60,9 @@ gradio_app = create_gradio_app()
 
 # Mount Gradio app to FastAPI
 app = gr.mount_gradio_app(app, gradio_app, path="/webui")
+
+# Mount static files directory for serving results
+app.mount("/results", StaticFiles(directory=RESULTS_DIR), name="results")
 
 @app.get("/health")
 async def health_check():

@@ -6,13 +6,33 @@ Copyright (C) 2025 Apple Inc. All Rights Reserved.
 
 from __future__ import annotations
 
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
+from enum import Enum
+from datetime import datetime
 
 from pydantic import BaseModel, Field
 
 
 class PredictRequest(BaseModel):
     """Model for prediction request parameters."""
+
+    device: Optional[str] = Field(
+        default="default",
+        description="Device to run inference on. Options: ['cpu', 'mps', 'cuda']",
+        pattern="^(default|cpu|mps|cuda)$"
+    )
+    render: bool = Field(
+        default=False,
+        description="Whether to render the 3D Gaussians into a video"
+    )
+    checkpoint_path: Optional[str] = Field(
+        default=None,
+        description="Path to a custom model checkpoint"
+    )
+
+
+class BatchPredictRequest(BaseModel):
+    """Model for batch prediction request parameters."""
 
     device: Optional[str] = Field(
         default="default",
@@ -48,6 +68,9 @@ class PredictResult(BaseModel):
     num_gaussians: int = Field(
         description="Number of 3D Gaussians generated"
     )
+    filename: str = Field(
+        description="Original filename of the input image"
+    )
 
 
 class PredictResponse(BaseModel):
@@ -66,6 +89,94 @@ class PredictResponse(BaseModel):
     error: Optional[str] = Field(
         default=None,
         description="Error message (if unsuccessful)"
+    )
+
+
+class TaskStatusEnum(str, Enum):
+    """Enum for task status."""
+
+    PENDING = "pending"
+    RUNNING = "running"
+    COMPLETED = "completed"
+    FAILED = "failed"
+
+
+class TaskStatus(BaseModel):
+    """Model for task status data."""
+
+    task_id: str = Field(
+        description="Unique identifier for the task"
+    )
+    status: TaskStatusEnum = Field(
+        description="Current status of the task"
+    )
+    created_at: datetime = Field(
+        description="Time when the task was created"
+    )
+    started_at: Optional[datetime] = Field(
+        default=None,
+        description="Time when the task started processing"
+    )
+    completed_at: Optional[datetime] = Field(
+        default=None,
+        description="Time when the task completed"
+    )
+    total_images: int = Field(
+        description="Total number of images to process"
+    )
+    processed_images: int = Field(
+        description="Number of images already processed"
+    )
+    current_image: Optional[str] = Field(
+        default=None,
+        description="Filename of the current image being processed"
+    )
+    progress: float = Field(
+        description="Progress percentage (0-100)"
+    )
+    estimated_time_remaining: Optional[float] = Field(
+        default=None,
+        description="Estimated time remaining in seconds"
+    )
+    error: Optional[str] = Field(
+        default=None,
+        description="Error message if task failed"
+    )
+
+
+class BatchPredictResult(BaseModel):
+    """Model for batch prediction result data."""
+
+    task_id: str = Field(
+        description="Unique identifier for the task"
+    )
+    status: TaskStatusEnum = Field(
+        description="Final status of the task"
+    )
+    results: List[PredictResult] = Field(
+        description="List of prediction results for each image"
+    )
+    total_inference_time: float = Field(
+        description="Total inference time in seconds"
+    )
+
+
+class TaskResult(BaseModel):
+    """Model for task result response."""
+
+    task_id: str = Field(
+        description="Unique identifier for the task"
+    )
+    status: TaskStatusEnum = Field(
+        description="Current status of the task"
+    )
+    result: Optional[BatchPredictResult] = Field(
+        default=None,
+        description="Batch prediction result if task completed"
+    )
+    error: Optional[str] = Field(
+        default=None,
+        description="Error message if task failed"
     )
 
 
