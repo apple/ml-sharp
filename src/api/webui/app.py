@@ -168,10 +168,8 @@ def create_gradio_app() -> gr.Blocks:
     """
     with gr.Blocks(title="ml-sharp 3D Gaussian Predictor") as app:
         # Header
-        gr.Markdown("""# ml-sharp 3D Gaussian Point Cloud Predictor
-
-Generate 3D Gaussian point clouds from 2D images using the ml-sharp model.
-        """)
+        gr.Markdown("""# ml-sharp 3D Gaussian 点云生成器    
+  使用 ml-sharp 模型从 2D 图像生成 3D 高斯点云。  """)# pyright: ignore[reportUnusedCallResult]
 
         # State variables
         task_id_state = gr.State("")
@@ -256,7 +254,7 @@ Generate 3D Gaussian point clouds from 2D images using the ml-sharp model.
 
 
         # Function to continuously check progress
-        def check_progress_continuous(task_id: str) -> Tuple[str, bool]:
+        def check_progress_continuous(task_id: str) -> tuple[str, bool]:
             """Check progress continuously until task is completed.
             
             Args:
@@ -328,9 +326,10 @@ Generate 3D Gaussian point clouds from 2D images using the ml-sharp model.
         )
 
         # Footer
-        gr.Markdown("""## 关于  
-此应用程序使用 ml-sharp 模型从 2D 图像生成 3D 高斯点云。
-该模型基于最先进的计算机视觉技术。
+        gr.Markdown("""## 关于   
+开发者： MarcoTin   
+此应用程序使用 ml-sharp 模型从 2D 图像生成 3D 高斯点云。    
+
         """) # pyright: ignore[reportUnusedCallResult]
 
     return app
