@@ -5,15 +5,21 @@ description = "Inference/Network/Model code for SHARP view synthesis model."
 readme = "README.md"
 dependencies = [
   "click",
+  "fastapi",
+  "gradio",
   "gsplat",
   "imageio[ffmpeg]",
   "matplotlib",
   "pillow-heif",
   "plyfile",
+  "pydantic",
+  "python-multipart",
+  "requests",
   "scipy",
   "timm",
   "torch",
   "torchvision",
+  "uvicorn[standard]",
 ]
 
 [project.scripts]
