@@ -242,14 +242,7 @@ def create_gradio_app() -> gr.Blocks:
                     # Results display with direct download buttons
                     results_display = gr.Markdown(
                         label="结果列表",
-                        value="点击“获取结果”按钮查看结果"
-                    )
-
-                    # Get results button
-                    get_results_button = gr.Button(
-                        "获取结果",
-                        # variant="secondary",
-                        interactive=False
+                        value="结果列表"
                     )
 
 
@@ -293,31 +286,25 @@ def create_gradio_app() -> gr.Blocks:
         ).then(
             fn=check_progress_continuous,
             inputs=[task_id_state],
-            outputs=[progress_details, get_results_button]
+            outputs=[progress_details]
         ).then(
-            fn=lambda is_completed: gr.Button(interactive=is_completed),
-            inputs=[get_results_button],
-            outputs=[get_results_button]
-        )
-
-        # Get results button click
-        get_results_button.click(  # pyright: ignore[reportUnusedCallResult]
+          
             fn=get_results,
             inputs=[task_id_state],
             outputs=[results_state]
         ).then(
-            fn=lambda results: 
+            fn=lambda results:   # pyright: ignore[reportUnknownLambdaType]
                 # Format results as Markdown table with direct download buttons
-                "# Results Summary\n\n" +
-                "| Filename | Gaussians | Time (s) | Actions |\n" +
+                "#  计算结果列表\n\n" +
+                "| 图片名称 | 类型 | 计算时长 (s) | 下载链接 |\n" +
                 "|----------|-----------|----------|---------|\n" +
                 "\n".join([
-                    "| {} | {:,} | {:.2f} | {}{} |".format(
+                    "| {} | {} | {:.2f} | {}{} |".format(
                         res['filename'],
-                        res['num_gaussians'],
+                        "Gaussians" if res['num_gaussians'] == 1 else "{:,}".format(res['num_gaussians']),
                         res['inference_time'],
-                        "[Download PLY]({})".format(res['ply_url']),
-                        " | [Download Video]({})".format(res['video_url']) if res['video_url'] else ""
+                        "[下载 PLY]({})".format(res['ply_url']),
+                        " | [下载视频]({})".format(res['video_url']) if res['video_url'] else ""
                     )
                     for res in results
                 ]),
