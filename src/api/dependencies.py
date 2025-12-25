@@ -16,13 +16,13 @@ from sharp.models import PredictorParams, RGBGaussianPredictor, create_predictor
 
 LOGGER = logging.getLogger(__name__)
 
-DEFAULT_MODEL_URL = "https://ml-site.cdn-apple.com/models/sharp/sharp_2572gikvuh.pt"
+DEFAULT_MODEL_PATH = Path(__file__).parent.parent.parent / "model" / "sharp_2572gikvuh.pt"
 
 
 class ModelCache:
     """Singleton class for caching loaded models."""
 
-    _instance: Optional[ModelCache] = None
+    _instance: ModelCache|None = None
     _models: dict[str, RGBGaussianPredictor] = {}
 
     def __new__(cls) -> ModelCache:
@@ -32,7 +32,7 @@ class ModelCache:
         return cls._instance
 
     def get_model(
-        self, checkpoint_path: Optional[Path] = None, device: str = "cuda"
+        self, checkpoint_path: Path | None = None, device: str = "cuda"
     ) -> RGBGaussianPredictor:
         """Get a model from cache or load it if not present.
 
@@ -51,14 +51,12 @@ class ModelCache:
             LOGGER.info(f"Using cached model: {model_key}")
             return self._models[model_key]
 
-        # Load or download checkpoint
+        # Load checkpoint
         LOGGER.info(f"Loading model: {model_key}")
-        if checkpoint_path is None:
-            LOGGER.info(f"No checkpoint provided. Downloading default model from {DEFAULT_MODEL_URL}")
-            state_dict = torch.hub.load_state_dict_from_url(DEFAULT_MODEL_URL, progress=True)
-        else:
-            LOGGER.info(f"Loading checkpoint from {checkpoint_path}")
-            state_dict = torch.load(checkpoint_path, weights_only=True)
+        # Always use the default model path
+        final_checkpoint_path = DEFAULT_MODEL_PATH
+        LOGGER.info(f"Loading checkpoint from {final_checkpoint_path}")
+        state_dict = torch.load(final_checkpoint_path, weights_only=True)
 
         # Create and configure model
         gaussian_predictor = create_predictor(PredictorParams())

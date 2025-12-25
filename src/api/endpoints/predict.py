@@ -193,9 +193,8 @@ async def process_batch_task(
             LOGGER.warning(f"Task {task.task_id}: Can only run rendering with gsplat on CUDA. Rendering is disabled.")
             task.request.render = False
 
-        # Get model from cache
-        checkpoint_path = Path(task.request.checkpoint_path) if task.request.checkpoint_path else None
-        model = model_cache.get_model(checkpoint_path, str(device))
+        # Get model from cache (always use default model)
+        model = model_cache.get_model(None, str(device))
 
         # Process each image
         total_start_time = time.time()
@@ -397,9 +396,8 @@ async def predict(
             LOGGER.warning("Can only run rendering with gsplat on CUDA. Rendering is disabled.")
             request.render = False
 
-        # Get model from cache
-        checkpoint_path = Path(request.checkpoint_path) if request.checkpoint_path else None
-        model = model_cache.get_model(checkpoint_path, str(device))
+        # Get model from cache (always use default model)
+        model = model_cache.get_model(None, str(device))
 
         # Run inference
         gaussians = predict_image(model, image, f_px, device)

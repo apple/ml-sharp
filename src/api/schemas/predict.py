@@ -25,10 +25,6 @@ class PredictRequest(BaseModel):
         default=False,
         description="Whether to render the 3D Gaussians into a video"
     )
-    checkpoint_path: Optional[str] = Field(
-        default=None,
-        description="Path to a custom model checkpoint"
-    )
 
 
 class BatchPredictRequest(BaseModel):
@@ -42,10 +38,6 @@ class BatchPredictRequest(BaseModel):
     render: bool = Field(
         default=False,
         description="Whether to render the 3D Gaussians into a video"
-    )
-    checkpoint_path: Optional[str] = Field(
-        default=None,
-        description="Path to a custom model checkpoint"
     )
 
 

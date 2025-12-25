@@ -24,8 +24,7 @@ API_URL = "http://localhost:8000"
 def predict_batch(
     images: List[str],
     device: str,
-    render: bool,
-    checkpoint_path: Optional[str] = None
+    render: bool
 ) -> Tuple[str, str, str]:
     """Predict 3D Gaussians from multiple images using the API.
 
@@ -33,7 +32,6 @@ def predict_batch(
         images: List of input image file paths.
         device: The device to run inference on.
         render: Whether to render the results.
-        checkpoint_path: Path to a custom model checkpoint.
 
     Returns:
         Tuple containing:
@@ -62,8 +60,7 @@ def predict_batch(
         # Prepare API request
         data = {
             "device": device,
-            "render": render,
-            "checkpoint_path": checkpoint_path
+            "render": render
         }
 
         # Send request to API
@@ -202,14 +199,6 @@ def create_gradio_app() -> gr.Blocks:
                     info="Generate a video rendering of the 3D Gaussians (CUDA only)"
                 )
 
-                # Checkpoint path (optional)
-                checkpoint_path = gr.Textbox(
-                    value="",
-                    label="Custom Checkpoint Path (Optional)",
-                    placeholder="Path to a custom .pt checkpoint file",
-                    info="Leave empty to use the default model"
-                )
-
                 # Predict button
                 predict_button = gr.Button(
                     "Generate 3D Gaussians",
@@ -281,7 +270,7 @@ def create_gradio_app() -> gr.Blocks:
         # Set up event handlers
         predict_button.click(  # pyright: ignore[reportUnusedCallResult]
             fn=predict_batch,
-            inputs=[image_list_input, device_dropdown, render_checkbox, checkpoint_path],
+            inputs=[image_list_input, device_dropdown, render_checkbox],
             outputs=[task_id_state, status_output, progress_details]
         ).then(
             fn=check_progress_continuous,
