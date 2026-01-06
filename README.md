@@ -25,6 +25,12 @@ Afterwards, you can install the project using
 pip install -r requirements.txt
 ```
 
+If you are using *Intel GPU*, you can install the project using the command below
+
+```
+pip install -r requirements.txt --extra-index-url https://download.pytorch.org/whl/xpu
+```
+
 To test the installation, run
 
 ```

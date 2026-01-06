@@ -70,7 +70,7 @@ DEFAULT_MODEL_URL = "https://ml-site.cdn-apple.com/models/sharp/sharp_2572gikvuh
     "--device",
     type=str,
     default="default",
-    help="Device to run on. ['cpu', 'mps', 'cuda']",
+    help="Device to run on. ['cpu', 'mps', 'cuda', 'xpu']",
 )
 @click.option("-v", "--verbose", is_flag=True, help="Activate debug logs.")
 def predict_cli(
@@ -103,6 +103,8 @@ def predict_cli(
     if device == "default":
         if torch.cuda.is_available():
             device = "cuda"
+        elif torch.xpu.is_available():
+            device = "xpu"
         elif torch.mps.is_available():
             device = "mps"
         else:
