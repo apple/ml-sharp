@@ -71,6 +71,10 @@ sharp render -i /path/to/output/gaussians -o /path/to/output/renderings
 Please refer to the paper for both quantitative and qualitative evaluations.
 Additionally, please check out this [qualitative examples page](https://apple.github.io/ml-sharp/) containing several video comparisons against related work.
 
+## Related projects
+
+- [quest-sbs-3d](https://github.com/z4djjskk/quest-sbs-3d) — community project by @z4djjskk.
+
 ## Citation
 
 If you find our work useful, please cite the following paper:
