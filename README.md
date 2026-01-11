@@ -18,6 +18,11 @@ We recommend to first create a python environment:
 ```
 conda create -n sharp python=3.13
 ```
+Then activate the python environment:
+
+```
+conda activate sharp
+```
 
 Afterwards, you can install the project using
 
