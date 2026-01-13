@@ -138,10 +138,17 @@ Here is the original KARABA video. You can convert any video to 3D SBS
 Installing ml-sharp is very easy and runs on any pc or mac. It can also run without GPU but works faster if you have it. We recommend to first create a python environment. For PC you must use python 3.10 on Mac it works fine with python 3.13
 
 # Installing on PC
-### Prerequisites
-Before starting, ensure you have the following installed:
-- **Python 3.10** (Make sure to check "Add Python to PATH" during installation)
-- **Git**
+
+## Requirements
+- **Python 3.10** (required - other versions may not work)
+- **NVIDIA GPU** with 6GB+ VRAM (RTX 2060 or newer recommended)
+- **Windows 10 or 11**
+- **16GB RAM** (8GB minimum)
+- **Visual Studio 2022 Build Tools**
+  - Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
+  - During install, select "Desktop development with C++" workload
+  - Required for compiling gsplat
+    
 Open up the CMD terminal and go to your root drive. in my example I just went to my d: drive
 
 First clone the repo
