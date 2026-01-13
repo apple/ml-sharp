@@ -44,13 +44,13 @@ Don't just watch your movies—step inside them. With the new **SBS Movie Maker*
 
 ### Watch This Uganda Walking 3D SBS Video Made with ML-Sharp. Use Your XREAL, VITURE , Rokid, RayNeo, Oculus, Meta Quest Glasses
 
-### click image to watch video [ml-sharp Uganda](https://youtu.be/uDN3OGLSwv0?si=C4t7jL6CJ9JvdgX0)
+### click image to watch video [ml-sharp Kampala Downtown](https://youtu.be/klRS5Vnkqwo?si=C4t7jL6CJ9JvdgX0)
 
-[![ml-sharp-3d-sbs-video](https://i.ytimg.com/vi/uDN3OGLSwv0/maxresdefault.jpg)](https://youtu.be/uDN3OGLSwv0?si=C4t7jL6CJ9JvdgX0)
+[![ml-sharp-3d-sbs-video](https://i.ytimg.com/vi/klRS5Vnkqwo/maxresdefault.jpg)](https://youtu.be/klRS5Vnkqwo?si=C4t7jL6CJ9JvdgX0)
 
-Here is the original Uganda video. You can convert any video to 3D SBS
+Here is the original Kampala Downtown video. You can convert any video to 3D SBS
 
-[Opolotivation – KAMPALA CITY - Everyone is Back Already 🌍🇺🇬UGANDA](https://youtu.be/bedRgQY7fpw?si=iEBcHTHhvjGlJK4-)
+[The Humble Africa - Kampala Downtown - UGANDA](https://youtu.be/nskIF0_UaUM?si=iEBcHTHhvjGlJK4-)
 
 **Supported Hardware:**
 Fully compatible with XREAL (Air/Air 2/Pro/Ultra/One), VITURE (Pro XR/One/Luma), Rokid (Max/Pro), RayNeo (Air 2/3S), Apple Vision Pro, Meta Quest, and any display that supports standard Side-by-Side content.
@@ -68,6 +68,7 @@ Unlike basic "2D-to-3D" converters that just shift pixels, `ml-sharp` uses Apple
 ### click image to watch video [ml-sharp Makkah](https://youtu.be/BLDu1ylXA0E?si=C4t7jL6CJ9JvdgX0)
 
 [![ml-sharp-3d-sbs-video](https://i.ytimg.com/vi/BLDu1ylXA0E/maxresdefault.jpg)](https://youtu.be/BLDu1ylXA0E?si=C4t7jL6CJ9JvdgX0)
+
 
 Here is the original Makkah video. You can convert any video to 3D SBS
 
