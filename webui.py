@@ -489,8 +489,12 @@ def _process_video_job(job_id, tmp_path, original_stem, unique_id, predictor, de
                 pass
 
 
-def _process_sbs_video_job(job_id, tmp_path, original_stem, unique_id, predictor, device, fps, use_fp16, opacity_threshold, stereo_offset, brightness_factor, batch_size):
-    """Background worker for SBS 3D Movie generation with Batching and unique folders."""
+def _process_sbs_video_job(job_id, tmp_path, original_stem, unique_id, predictor, device, fps, use_fp16, opacity_threshold, stereo_offset, brightness_factor, batch_size, frame_skip=1):
+    """Background worker for SBS 3D Movie generation with Batching and unique folders.
+    
+    Args:
+        frame_skip: Process every Nth frame (1=all frames, 2=every 2nd, etc.)
+    """
     
     # Verify CUDA for rendering
     if device.type != 'cuda':
@@ -531,8 +535,11 @@ def _process_sbs_video_job(job_id, tmp_path, original_stem, unique_id, predictor
         # 2. Setup Processing
         try:
             reader = iio.get_reader(tmp_path)
-            total_frames = reader.count_frames()
+            total_frames_raw = reader.count_frames()
+            # Adjust total_frames to reflect actual frames to render after skip
+            total_frames = (total_frames_raw + frame_skip - 1) // frame_skip  # Ceiling division
             _active_jobs[job_id]['total_frames'] = total_frames
+            LOGGER.info(f"Job {job_id}: {total_frames_raw} total frames, {total_frames} to render (skip={frame_skip})")
         except Exception:
             _active_jobs[job_id]['total_frames'] = 0
             reader = iio.get_reader(tmp_path)
@@ -551,8 +558,18 @@ def _process_sbs_video_job(job_id, tmp_path, original_stem, unique_id, predictor
         # Batch Containers
         batch_frames = []
         batch_indices = []
+        
+        # Performance: Pre-compute stereo camera extrinsics (used for all frames)
+        _cached_ext_left = torch.eye(4, device=device)
+        _cached_ext_left[0, 3] = stereo_offset
+        _cached_ext_right = torch.eye(4, device=device)
+        _cached_ext_right[0, 3] = -stereo_offset
+        # Cache intrinsics template (f_px will vary per frame size, but we cache the structure)
+        _cached_intrinsics_template = None
+        _cached_frame_dims = None
 
         def process_sbs_batch(frames, indices):
+            nonlocal _cached_intrinsics_template, _cached_frame_dims
             try:
                 # Preprocess
                 clean_frames = []
@@ -565,6 +582,21 @@ def _process_sbs_video_job(job_id, tmp_path, original_stem, unique_id, predictor
                 
                 # Predict Batch
                 gaussians_list = predict_batch(predictor, clean_frames, f_px, device, use_fp16=use_fp16)
+                
+                # Performance: Cache intrinsics if frame dimensions match
+                if _cached_frame_dims != (h, w):
+                    f_px_render = f_px * (render_w / w)
+                    _cached_intrinsics_template = torch.tensor([
+                        [f_px_render, 0, render_w / 2, 0],
+                        [0, f_px_render, render_h / 2, 0],
+                        [0, 0, 1, 0],
+                        [0, 0, 0, 1],
+                    ], device=device, dtype=torch.float32)
+                    _cached_frame_dims = (h, w)
+                
+                intrinsics = _cached_intrinsics_template
+                ext_left = _cached_ext_left
+                ext_right = _cached_ext_right
                 
                 # Render Loop (Rendering is still sequential per gaussian, but prediction was batched)
                 # Note: We could technically batch render if gsplat supports it, but gsplat renderer
@@ -652,15 +684,22 @@ def _process_sbs_video_job(job_id, tmp_path, original_stem, unique_id, predictor
 
         # 3. Frame Loop
         fallback_mode = False
+        output_frame_idx = 0  # Separate counter for output frame numbering
+
         
         for i, frame in enumerate(reader):
             if _active_jobs[job_id]['stop_signal']:
                 LOGGER.info(f"Job {job_id} stopped by user.")
                 _active_jobs[job_id]['status'] = 'stopped'
                 break
+            
+            # Frame skip logic: only process every Nth frame
+            if i % frame_skip != 0:
+                continue
 
             batch_frames.append(frame)
-            batch_indices.append(i)
+            batch_indices.append(output_frame_idx)  # Use output index for sequential frame naming
+            output_frame_idx += 1
             
             effective_bs = 1 if fallback_mode else batch_size
             
@@ -685,8 +724,12 @@ def _process_sbs_video_job(job_id, tmp_path, original_stem, unique_id, predictor
             output_path = OUTPUT_DIR / output_filename
             LOGGER.info(f"Job {job_id}: Encoding SBS video to {output_filename}...")
             
+            # Adjust output FPS based on frame_skip to maintain original video duration
+            output_fps = fps / frame_skip
+            LOGGER.info(f"Job {job_id}: Output FPS adjusted from {fps} to {output_fps} (frame_skip={frame_skip})")
+            
             input_pattern = str(work_dir / "frame_%05d.png")
-            cmd = [ffmpeg_exe, "-y", "-framerate", str(fps), "-i", input_pattern]
+            cmd = [ffmpeg_exe, "-y", "-framerate", str(output_fps), "-i", input_pattern]
             if has_audio: cmd.extend(["-i", str(audio_path)])
             cmd.extend(["-c:v", "libx264", "-pix_fmt", "yuv420p", "-crf", "18", "-preset", "fast"])
             
@@ -905,8 +948,15 @@ def generate_video():
         if batch_size < 1: batch_size = 1
     except:
         batch_size = 1
+    
+    # FRAME SKIP parsing (1 = process all frames, 2 = every 2nd frame, etc.)
+    try:
+        frame_skip = int(request.form.get('frame_skip', 1))
+        if frame_skip < 1: frame_skip = 1
+    except:
+        frame_skip = 1
 
-    LOGGER.info(f"Starting video generation | Mode: {output_mode} | Batch Size: {batch_size} | Quality: {quality}")
+    LOGGER.info(f"Starting video generation | Mode: {output_mode} | Batch Size: {batch_size} | Frame Skip: {frame_skip} | Quality: {quality}")
 
     allowed_extensions = {".mp4", ".mov", ".avi", ".mkv", ".webm"}
     ext = Path(file.filename).suffix.lower()
@@ -946,7 +996,7 @@ def generate_video():
         if output_mode == 'sbs_movie':
             thread = threading.Thread(
                 target=_process_sbs_video_job,
-                args=(job_id, tmp_path, original_stem, unique_id, predictor, device, fps, use_fp16, opacity_threshold, stereo_offset, brightness_factor, batch_size)
+                args=(job_id, tmp_path, original_stem, unique_id, predictor, device, fps, use_fp16, opacity_threshold, stereo_offset, brightness_factor, batch_size, frame_skip)
             )
         else:
             thread = threading.Thread(

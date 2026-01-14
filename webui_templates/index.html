@@ -983,7 +983,22 @@
                                         glow.</small>
                                 </div>
 
+                                <!-- Frame Skip (Speed) -->
+                                <div class="input-group" style="margin-bottom: 8px;">
+                                    <label>Frame Skip (Speed Boost):</label>
+                                    <select id="sbs-frame-skip" class="quality-select">
+                                        <option value="1" selected>Process All Frames (1x)</option>
+                                        <option value="2">Every 2nd Frame (2x Speed)</option>
+                                        <option value="3">Every 3rd Frame (3x Speed)</option>
+                                        <option value="4">Every 4th Frame (4x Speed)</option>
+                                        <option value="5">Every 5th Frame (5x Speed)</option>
+                                    </select>
+                                    <small class="hint">Skip frames for faster processing. Audio stays synced.
+                                        Higher skip = faster but choppier video.</small>
+                                </div>
+
                                 <!-- SBS Preview Button -->
+
                                 <button class="sbs-preview-btn" id="sbs-preview-btn" type="button">
                                     <span class="spinner"></span>
                                     <span class="btn-text">👁️ Preview SBS Frame</span>
@@ -1191,6 +1206,11 @@
         let statusPollInterval = null;
         let lastLoadedFrameUrl = null;
 
+        // Video frame estimation
+        let videoTotalFrames = 0;
+        let videoFps = 30;
+        let videoFileName = '';
+
         let videoData = {
             plyFiles: [],
             baseUrl: "",
@@ -1257,6 +1277,7 @@
         const sbsOpacity = document.getElementById('sbs-opacity');
         const sbsOffset = document.getElementById('sbs-offset');
         const sbsBrightness = document.getElementById('sbs-brightness');
+        const sbsFrameSkip = document.getElementById('sbs-frame-skip');
 
         // Webcam Elements
         const webcamFeed = document.getElementById('webcam-feed');
@@ -1320,10 +1341,15 @@
             sbsToggle.addEventListener('change', function () {
                 if (this.checked) {
                     sbsSettings.style.display = 'block';
+                    updateFrameEstimate(); // Update when SBS mode toggled
                 } else {
                     sbsSettings.style.display = 'none';
+                    updateFrameEstimate(); // Reset estimate when SBS toggled off
                 }
             });
+
+            // Frame Skip change listener
+            sbsFrameSkip.addEventListener('change', updateFrameEstimate);
 
             // SBS Preview
             const sbsPreviewBtn = document.getElementById('sbs-preview-btn');
@@ -1641,11 +1667,34 @@
                 previewImage.style.display = 'none';
                 previewVideo.style.display = 'block';
                 previewVideo.src = URL.createObjectURL(file);
-                previewInfo.textContent = `${file.name} (Video)`;
+                videoFileName = file.name;
+                previewInfo.textContent = `${file.name} (Video - loading...)`;
+
+                // Get video duration and estimate frames when metadata loads
+                previewVideo.onloadedmetadata = () => {
+                    const duration = previewVideo.duration;
+                    videoFps = 30; // Assume 30fps (common default)
+                    videoTotalFrames = Math.ceil(duration * videoFps);
+                    updateFrameEstimate();
+                };
             }
             generateBtn.disabled = false;
             generateBtn.querySelector('.btn-text').textContent = isVideoMode ? "Generate Video Splats" : "Generate 3D Gaussian Splat";
             downloadSection.classList.remove('visible');
+        }
+
+        // Update frame estimation based on skip setting
+        function updateFrameEstimate() {
+            if (!isVideoMode || videoTotalFrames === 0) return;
+
+            const frameSkip = sbsToggle.checked ? parseInt(sbsFrameSkip.value) : 1;
+            const framesToRender = Math.ceil(videoTotalFrames / frameSkip);
+
+            if (sbsToggle.checked && frameSkip > 1) {
+                previewInfo.textContent = `${videoFileName} (~${videoTotalFrames} total → ${framesToRender} frames to render)`;
+            } else {
+                previewInfo.textContent = `${videoFileName} (~${videoTotalFrames} frames)`;
+            }
         }
 
         // Shared Generation Logic (Used by File Upload & Webcam)
@@ -1711,6 +1760,8 @@
                     formData.append('opacity_threshold', sbsOpacity.value);
                     formData.append('stereo_offset', sbsOffset.value);
                     formData.append('brightness_factor', sbsBrightness.value);
+                    formData.append('frame_skip', sbsFrameSkip.value);
+
                     showStatus('Starting SBS 3D Movie generation (Frames + Rendering)...(Stop at anytime to output movie)', 'info');
                 } else {
                     formData.append('output_mode', 'ply_seq');
