@@ -31,7 +31,7 @@ Amazing tech from Apple works with any image. You can even use OBS as a virtual 
 
 ### click image to watch video [ml-sharp](https://youtu.be/aZaGBWggVPc?si=C4t7jL6CJ9JvdgX0)
 
-## (PC ONLY) Full Support for XREAL Air, XREAL Air 2, XREAL Air 2 Pro, XREAL Air 2 Ultra , XREAL One, XREAL One Pro, VITURE Pro XR, VITURE One , VITURE One Lite, VITURE Luma, VITURE Luma Pro, Rokid Max, Rokid Max Pro, RayNeo Air 3S, RayNeo Air 3S Pro, RayNeo Air 2, RayNeo Air 2S, Apple Vision Pro, Occulus
+## (PC & LINUX ONLY) Full Support for XREAL Air, XREAL Air 2, XREAL Air 2 Pro, XREAL Air 2 Ultra , XREAL One, XREAL One Pro, VITURE Pro XR, VITURE One , VITURE One Lite, VITURE Luma, VITURE Luma Pro, Rokid Max, Rokid Max Pro, RayNeo Air 3S, RayNeo Air 3S Pro, RayNeo Air 2, RayNeo Air 2S, Apple Vision Pro, Occulus
 
 (PC ONLY) Experience 3D like never before with your new AR glasses that support SBS
 
