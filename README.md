@@ -37,7 +37,7 @@ Amazing tech from Apple works with any image. You can even use OBS as a virtual 
 
 ![sbs-3d](webui_static/sbs-3d.png)
 
-## (PC ONLY) Transform Any 2D Video into a Cinematic 3D SBS Movie
+## (PC & LINUX ONLY) Transform Any 2D Video into a Cinematic 3D SBS Movie
 
 **Unlock the full potential of your AR/VR hardware.** 
 Don't just watch your movies—step inside them. With the new **SBS Movie Maker**, `ml-sharp` can ingest any standard 2D video file and reconstruct it into a stunning, depth-accurate Side-by-Side (SBS) 3D experience.
@@ -134,9 +134,9 @@ Here is the original KARABA video. You can convert any video to 3D SBS
 
 [KARABA](https://youtu.be/0JV1Dswpev0?si=eOBOWxN2hQzuZsz2)
 
-## Getting started on MAC or PC
+## Getting started on MAC or PC or Linux
 
-Installing ml-sharp is very easy and runs on any pc or mac. It can also run without GPU but works faster if you have it. We recommend to first create a python environment. For PC you must use python 3.10 on Mac it works fine with python 3.13
+Installing ml-sharp is very easy and runs on any pc or mac. It can also run without GPU but works faster if you have it. We recommend to first create a python environment. For PC and Linux you must use python 3.10 if you want SBS Video feature. On Mac it works fine with python 3.13 but you don't get SBS video feature. The gsplat library is not supported on MAC to create 3D SBS videos. 
 
 # Installing on PC
 
@@ -338,6 +338,142 @@ Wait until you see to open your browser to:
 Http://localhost:7860
 ```
 
+# Installation Guide: ml-sharp on Zorin OS 18 (Ubuntu 24.04)
+
+This guide covers the installation of `ml-sharp` on a fresh install of Zorin OS 18 using an NVIDIA RTX 2060 Super (8GB). It addresses specific requirements for Python 3.10, CUDA 12, and Conda Terms of Service. You should first create a system restore point using timeshift app so you can revert back if you encounter issues. 
+
+### Phase 1: Update & Install NVIDIA Drivers
+
+Update System:Open Terminal (Ctrl+Alt+T) and run:
+```
+sudo apt update && sudo apt upgrade -y
+sudo apt install git build-essential -y
+```
+
+
+###  Install NVIDIA Drivers:
+
+Open Zorin Menu → System Tools → Software & Updates.
+
+Click the Additional Drivers tab.
+
+Select "Using NVIDIA driver metapackage from nvidia-driver-550 (proprietary)" (or the latest version available).
+
+Click Apply Changes.
+
+Reboot your computer immediately.
+
+
+
+### Phase 2: Install CUDA Toolkit
+
+This installs the system-level CUDA tools so your terminal recognizes GPU commands.
+
+Install the Toolkit:
+```
+sudo apt install nvidia-cuda-toolkit -y
+```
+
+Verify Installation: You should see output starting with nvcc: NVIDIA (R) Cuda compiler driver...
+```
+nvcc --version
+```
+
+
+### Phase 3: Install Miniconda & Accept Licenses
+We use Miniconda to get Python 3.10 without messing up Zorin's default Python 3.12.
+
+Download and Install:
+```
+mkdir -p ~/miniconda3
+wget https://repo.anaconda.com/miniconda/Miniconda3-latest-Linux-x86_64.sh -O ~/miniconda3/miniconda.sh
+bash ~/miniconda3/miniconda.sh -b -u -p ~/miniconda3
+rm -rf ~/miniconda3/miniconda.sh
+```
+
+Initialize Conda:
+```
+~/miniconda3/bin/conda init bash
+```
+
+Accept Terms of Service (Crucial Step):
+Run these commands to prevent the "ToS" error you saw earlier:
+```
+~/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/main
+~/miniconda3/bin/conda tos accept --override-channels --channel https://repo.anaconda.com/pkgs/r
+```
+Restart Terminal:
+Close your terminal window and open a new one.
+
+
+
+### Phase 4: Create Environment & Install GPU Libraries
+We install the specific GPU versions before the repo requirements to avoid conflicts.
+
+Create and Activate Python 3.10 Environment:
+```
+conda create -n mlsharp python=3.10 -y
+conda activate mlsharp
+```
+
+Install PyTorch (CUDA 12.1 Version):
+```
+pip install torch==2.4.0+cu121 torchvision==0.19.0+cu121 torchaudio==2.4.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+```
+
+Install Gsplat (Rendering Engine):
+You might see some red errors for a specific version on this command. Keep pushing forward.
+```
+pip install gsplat --index-url https://docs.gsplat.studio/whl/pt24cu121
+```
+
+
+Pin NumPy (Prevent Version 2.0 Crash):
+```
+pip install "numpy<2"
+```
+
+
+### Phase 5: Install ml-sharp Repo
+```
+cd ~
+git clone https://github.com/iVideoGameBoss/ml-sharp.git
+cd ml-sharp
+```
+
+Install Dependencies:
+When you run requirements.txt you might see some red error text. Just push forward
+```
+pip install --upgrade pip
+pip install -r requirements.txt
+pip install -r requirements-webui.txt
+pip install flask
+```
+
+Install Repo in Editable Mode:
+```
+pip install -e .
+```
+
+
+### Phase 6: Run the WebUI
+Make Script Executable (First time only)
+```
+chmod +x run_webui.sh
+```
+How to Run in the Future
+```
+conda activate mlsharp
+cd ~/ml-sharp
+./run_webui.sh
+```
+
+
+Open in Browser
+Go to: http://127.0.0.1:7860
+
+Start the WebUI
+
 ## Using the CLI
 
 To run prediction:
@@ -424,3 +560,5 @@ Our codebase is built using multiple opensource contributions, please see [ACKNO
 
 Please check out the repository [LICENSE](LICENSE) before using the provided code and
 [LICENSE_MODEL](LICENSE_MODEL) for the released models.
+
+
