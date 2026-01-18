@@ -189,6 +189,7 @@ class VideoWriter(OutputWriter):
         self.image_writer = iio.get_writer(output_path, fps=fps)
 
         self.max_depth_estimate = None
+        self.depth_writer = None
         if render_depth:
             self.depth_writer = iio.get_writer(output_path.with_suffix(".depth.mp4"), fps=fps)
 
@@ -211,3 +212,5 @@ class VideoWriter(OutputWriter):
     def close(self):
         """Finish writing."""
         self.image_writer.close()
+        if self.depth_writer is not None:
+            self.depth_writer.close()
