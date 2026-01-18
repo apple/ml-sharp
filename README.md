@@ -17,6 +17,7 @@ We recommend to first create a python environment:
 
 ```
 conda create -n sharp python=3.13
+conda activate sharp
 ```
 
 Afterwards, you can install the project using
@@ -36,7 +37,7 @@ sharp --help
 To run prediction:
 
 ```
-sharp predict -i /path/to/input/images -o /path/to/output/gaussians
+sharp predict -i input/images -o to/output/gaussians
 ```
 
 The model checkpoint will be downloaded automatically on first run and cached locally at `~/.cache/torch/hub/checkpoints/`.
