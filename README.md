@@ -145,6 +145,7 @@ Installing ml-sharp is very easy and runs on any pc or mac. It can also run with
 - **NVIDIA GPU** with 6GB+ VRAM (RTX 2060 or newer recommended)
 - **Windows 10 or 11**
 - **16GB RAM** (8GB minimum)
+- **[CUDA Toolkit 11.8](https://developer.nvidia.com/cuda-11-8-0-download-archive)** (fancy software to make it run faster).  
 - **Visual Studio 2022 Build Tools**
   - Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
   - During install, select "Desktop development with C++" workload
