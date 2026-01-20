@@ -93,6 +93,7 @@ def predict_cli(
     else:
         for ext in extensions:
             image_paths.extend(list(input_path.glob(f"**/*{ext}")))
+        image_paths.sort()
 
     if len(image_paths) == 0:
         LOGGER.info("No valid images found. Input was %s.", input_path)

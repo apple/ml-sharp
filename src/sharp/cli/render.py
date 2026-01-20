@@ -52,6 +52,7 @@ def render_cli(input_path: Path, output_path: Path, verbose: bool):
         scene_paths = [input_path]
     elif input_path.is_dir():
         scene_paths = list(input_path.glob("*.ply"))
+        scene_paths.sort()
     else:
         LOGGER.error("Input path must be either directory or single PLY file.")
         exit(1)

@@ -352,9 +352,10 @@ def save_ply(
     def _inverse_sigmoid(tensor: torch.Tensor) -> torch.Tensor:
         return torch.log(tensor / (1.0 - tensor))
 
-    xyz = gaussians.mean_vectors.flatten(0, 1)
-    scale_logits = torch.log(gaussians.singular_values).flatten(0, 1)
-    quaternions = gaussians.quaternions.flatten(0, 1)
+    xyz = gaussians.mean_vectors.flatten(0, 1).detach().cpu()
+    scale_logits = torch.log(gaussians.singular_values).flatten(0, 1).detach().cpu()
+    quaternions = gaussians.quaternions.flatten(0, 1).detach().cpu()
+    opacity_logits = _inverse_sigmoid(gaussians.opacities).flatten(0, 1).unsqueeze(-1).detach().cpu()
 
     # SHARP takes an image, convert it to sRGB color space as input,
     # and predicts linearRGB Gaussians as output.
@@ -368,13 +369,9 @@ def save_ply(
     # - The SHARP renderer will still handle conversions properly.
     # - Public renderers will be mostly working fine when regarding sRGB images as linearRGB images,
     #   although for the best performance, it is recommended to apply the conversions.
-    colors = convert_rgb_to_spherical_harmonics(
-        cs_utils.linearRGB2sRGB(gaussians.colors.flatten(0, 1))
-    )
+    colors_linear = gaussians.colors.flatten(0, 1).detach().cpu()
+    colors = convert_rgb_to_spherical_harmonics(cs_utils.linearRGB2sRGB(colors_linear))
     color_space_index = cs_utils.encode_color_space("sRGB")
-
-    # Store opacity logits.
-    opacity_logits = _inverse_sigmoid(gaussians.opacities).flatten(0, 1).unsqueeze(-1)
 
     attributes = torch.cat(
         (
@@ -397,8 +394,8 @@ def save_ply(
     ]
 
     num_gaussians = len(xyz)
-    elements = np.empty(num_gaussians, dtype=dtype_full)
-    elements[:] = list(map(tuple, attributes.detach().cpu().numpy()))
+    attributes_np = attributes.numpy()
+    elements = np.core.records.fromarrays(attributes_np.T, dtype=dtype_full)
     vertex_elements = PlyElement.describe(elements, "vertex")
 
     # Load image-wise metadata.
@@ -476,8 +473,10 @@ def save_ply(
             disparity_element,
             color_space_element,
             version_element,
-        ]
+        ],
+        byte_order='<'
     )
 
-    plydata.write(path)
+    with open(path, 'wb') as f:
+        plydata.write(f)
     return plydata
