@@ -140,107 +140,185 @@ Installing ml-sharp is very easy and runs on any pc or mac. It can also run with
 
 # Installing on PC
 
-## Requirements
-- **Python 3.10** (required - other versions may not work)
-- **NVIDIA GPU** with 6GB+ VRAM (RTX 2060 or newer recommended)
-- **Windows 10 or 11**
-- **16GB RAM** (8GB minimum)
-- **[CUDA Toolkit 11.8](https://developer.nvidia.com/cuda-11-8-0-download-archive)** (fancy software to make it run faster).  
-- **Visual Studio 2022 Build Tools**
-  - Download: https://visualstudio.microsoft.com/visual-cpp-build-tools/
-  - During install, select "Desktop development with C++" workload
-  - Required for compiling gsplat
-    
-Open up the CMD terminal and go to your root drive. in my example I just went to my d: drive
+# Installation Guide for Windows 11 (Anaconda/Miniconda Method)
 
-First clone the repo
+This guide is optimized for Windows 11 users with **Visual Studio 2022 (or newer)** and **CUDA 13.x**. It uses **Anaconda (or Miniconda)** to manage the environment and **Pre-built Wheels** to avoid complex compilation errors.
 
+## 1. Prerequisites & Requirements
+
+Before starting, ensure your system meets the hardware requirements and has the necessary software installed.
+
+### Hardware
+*   **OS:** Windows 10 or 11
+*   **GPU:** NVIDIA GPU with **6GB+ VRAM** (RTX 2060 or newer recommended)
+*   **RAM:** 16GB RAM (8GB minimum, though 16GB is recommended for stability)
+
+### Software
+1.  **[Anaconda](https://www.anaconda.com/download) or [Miniconda](https://docs.anaconda.com/miniconda/)** (Required)
+    *   We use this to create the specific Python 3.10 environment needed for the project.
+    *   *Download the Windows 64-bit installer.*
+
+2.  **[Visual Studio 2022 Build Tools](https://visualstudio.microsoft.com/visual-cpp-build-tools/)**
+    *   **Crucial Step:** During installation, under the "Workloads" tab, ensure you check **"Desktop development with C++"**.
+    *   This provides the `cl.exe` compiler required by the project's graphics libraries.
+
+3.  **[CUDA Toolkit 11.8 or newer](https://developer.nvidia.com/cuda-downloads)**
+    *   The engine that allows the code to run on your NVIDIA GPU.
+    *   *Note:* Newer versions (CUDA 12.x or 13.x) are fully supported using this guide.
+
+4.  **[Git for Windows](https://git-scm.com/download/win)**
+    *   Required to download (clone) the repository.
+
+---
+
+## 2. Environment Setup
+
+1.  Open **Anaconda Prompt** (or Miniconda Prompt) from your Start Menu.
+2.  Create a fresh environment using Python 3.10:
+    ```cmd
+    conda create -n sharp python=3.10 -y
+    ```
+3.  Activate the environment:
+    ```cmd
+    conda activate sharp
+    ```
+
+---
+
+## 3. Clone Repository
+
+1.  Navigate to the folder where you want to install the project:
+    ```cmd
+    cd C:\Projects
+    ```
+    *(Or any folder of your choice)*
+2.  Clone the repository:
+    ```cmd
+    git clone https://github.com/iVideoGameBoss/ml-sharp.git
+    cd ml-sharp
+    ```
+
+---
+
+## 4. Install Dependencies (The "No-Compile" Method)
+
+Run the following commands **one by one** in your Anaconda Prompt. These steps force the use of pre-compiled files to prevent Visual Studio errors.
+
+1.  **Install Ninja** (Build tool required for extensions):
+    ```cmd
+    pip install ninja
+    ```
+
+2.  **Install PyTorch** (CUDA-enabled version):
+    ```cmd
+    pip install torch==2.4.0+cu121 torchvision==0.19.0+cu121 torchaudio==2.4.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+    ```
+
+3.  **Install GSplat** (Pre-built Wheel):
+    *   *Note: We use `--extra-index-url` to ensure dependencies are found correctly.*
+    ```cmd
+    pip install gsplat==1.5.2 --extra-index-url https://docs.gsplat.studio/whl/pt24cu121
+    ```
+
+4.  **Install Remaining Requirements:**
+    ```cmd
+    pip install "numpy<2"
+    pip install -r requirements.txt
+    pip install -r requirements-webui.txt
+    pip install flask
+    ```
+
+5.  **Install Project in Editable Mode:**
+    ```cmd
+    pip install -e .
+    ```
+
+---
+
+## 5. Create the Launcher Script
+
+To ensure the app runs correctly every time (and to handle newer Visual Studio versions automatically), create a dedicated launcher.
+
+1.  Inside the `ml-sharp` folder, create a new file named `run_webui_conda.bat`.
+2.  Paste the following code into it and save.
+    *   *This script now automatically searches for both Anaconda AND Miniconda.*
+    * make sure the path is correct in code below C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvars64.bat
+    * make sure the path is correct in code below C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat
+
+```batch
+@echo off
+setlocal
+
+:: --- CONFIGURATION ---
+set "CONDA_ENV_NAME=sharp"
+
+:: --- 1. SETUP VISUAL STUDIO (CL COMMAND) ---
+:: Automatically finds Visual Studio 2022 or Preview versions (VS 2026)
+if exist "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvars64.bat" (
+    call "C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul
+) else (
+    if exist "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" (
+        call "C:\Program Files (x86)\Microsoft Visual Studio\2022\BuildTools\VC\Auxiliary\Build\vcvars64.bat" >nul
+    )
+)
+
+:: --- CRITICAL FIX FOR NEWER VISUAL STUDIO VERSIONS ---
+:: Prevents CUDA from crashing if your VS version is newer than expected
+set "NVCC_PREPEND_FLAGS=-allow-unsupported-compiler"
+
+echo ======================================================================
+echo                 ML-SHARP WEBUI LAUNCHER (Anaconda)
+echo ======================================================================
+echo.
+
+:: --- 2. ACTIVATE ANACONDA ENVIRONMENT ---
+:: Try standard activation first
+call conda activate %CONDA_ENV_NAME% 2>nul
+if %ERRORLEVEL% NEQ 0 (
+    :: If that fails, try to find the activate script in common locations
+    if exist "%UserProfile%\anaconda3\Scripts\activate.bat" (
+        call "%UserProfile%\anaconda3\Scripts\activate.bat" %CONDA_ENV_NAME%
+    ) else if exist "%UserProfile%\miniconda3\Scripts\activate.bat" (
+        call "%UserProfile%\miniconda3\Scripts\activate.bat" %CONDA_ENV_NAME%
+    ) else (
+        echo [ERROR] Could not activate Conda environment '%CONDA_ENV_NAME%'.
+        echo Please open Anaconda Prompt manually.
+        pause
+        exit /b 1
+    )
+)
+
+:: --- 3. CHECK DEPENDENCIES (Auto-Fix) ---
+python -c "import torch; import gsplat; print(f'Torch: {torch.__version__} | GSplat loaded')" >nul 2>&1
+if %ERRORLEVEL% NEQ 0 (
+    echo [WARNING] Dependencies appear missing. Attempting auto-fix...
+    pip install ninja
+    pip install torch==2.4.0+cu121 torchvision==0.19.0+cu121 torchaudio==2.4.0+cu121 --index-url https://download.pytorch.org/whl/cu121
+    pip install gsplat==1.5.2 --extra-index-url https://docs.gsplat.studio/whl/pt24cu121 --force-reinstall
+    pip install "numpy<2"
+    pip install flask
+    pip install -e .
+)
+
+:: --- 4. LAUNCH WEBUI ---
+echo.
+echo Starting server in Conda env: %CONDA_ENV_NAME%
+echo Access the UI at: http://127.0.0.1:7860
+echo.
+
+python webui.py --preload
+
+if %ERRORLEVEL% NEQ 0 (
+    echo.
+    echo [ERROR] Server crashed. Review the error log above.
+    pause
+)
 ```
-git clone https://github.com/iVideoGameBoss/ml-sharp.git
+
+6. Run the Application
+Double-click run_webui_conda.bat to start the application.
+You should see something like this.
 ```
-
-Then go to ml-sharp folder
-```
-cd ml-sharp
-```
-
-Now create the venv environment. You must have python 3.10 installed on your PC
-```
-python.exe -m venv venv
-```
-
-Now activate the venv
-```
-cd venv
-cd Scripts
-activate
-cd..
-cd..
-```
-
-Now install the requirements.txt
-
-```
-pip install -r requirements.txt
-```
-Now install the requirements-webui.txt
-
-```
-pip install -r requirements-webui.txt
-```
-
-Now install flask which is a lightweight websever
-
-```
-pip install flask
-```
-
-Now run this commend, Apple’s ml-sharp needs pip install -e . because it’s designed to be run directly from source while you’re actively developing and experimenting with it—not as a prebuilt, frozen library. 
-
-```
-pip install -e .
-```
-
-Now Install CUDA-Enabled PyTorch & GSplat (CRITICAL STEP)
-We must install specific versions (PyTorch 2.4.0 + CUDA 12.1) to support the 3D renderer on Windows without Visual Studio.
-
-```
-pip uninstall -y torch torchvision torchaudio gsplat
-
-pip install torch==2.4.0+cu121 torchvision==0.19.0+cu121 torchaudio==2.4.0+cu121 --index-url https://download.pytorch.org/whl/cu121
-
-pip install gsplat --index-url https://docs.gsplat.studio/whl/pt24cu121
-
-```
-
-Now Fix NumPy Version. Prevent crashes with newer NumPy versions.
-
-```
-pip install "numpy<2"
-```
-
-Now double click the bat file. For me it is in D:\ml-sharp\ cause thats where I cloned it.
-
-This script is now configured to run in Isolated Mode, ensuring it uses the correct libraries we just installed and ignores any conflicting packages elsewhere on your system.
-
-"D:\ml-sharp\run_webui.bat"
-
-This batch file automatically prepares and starts the ml-sharp WebUI by first ensuring required dependencies like Flask are installed, then installing ml-sharp in editable (development) mode so Python always uses the live source code, and finally launching the web server with models preloaded and network access enabled; when you run it, the ML models load first, memory is allocated safely, and the web interface becomes available on port 7860 for your browser or other devices on the same network.
-
-Thats it! Wait until server starts and is ready.
-```
-Starting ml-sharp WebUI...
-
-Checking dependencies...
-
-[notice] A new release of pip is available: 23.0.1 -> 25.3
-[notice] To update, run: python.exe -m pip install --upgrade pip
-
-[notice] A new release of pip is available: 23.0.1 -> 25.3
-[notice] To update, run: python.exe -m pip install --upgrade pip
-
-Starting server on port 7860 (accessible on local network)
-Press Ctrl+C to stop the server
 
 2025-12-30 18:40:27,013 | INFO | Preloading model...
 2025-12-30 18:40:27,016 | INFO | CUDA GPU detected: NVIDIA GeForce RTX 2060 SUPER
@@ -256,7 +334,7 @@ Press Ctrl+C to stop the server
  * Debug mode: off
 ```
 
-Open your browser and paste http://0.0.0.0:7860 or http://127.0.0.1:7860
+Open your browser and go to http://127.0.0.1:7860.
 
 # Installing on MAC
 
