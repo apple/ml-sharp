@@ -84,15 +84,15 @@ The result is a standard `.mp4` file encoded in the industry-standard Side-by-Si
 *   **No special players required:** Play it in VLC, Windows Media Player, or directly inside your AR Glasses' native media player.
 *   **Universal Compatibility:** If your device supports 3D SBS mode, this movie will play perfectly with full depth and immersion.
 
-### Watch This Navotas Walking 3D SBS Video Made with ML-Sharp. Use Your XREAL, VITURE , Rokid, RayNeo, Oculus, Meta Quest Glasses
+### Watch This SLUM LIFE Walking 3D SBS Video Made with ML-Sharp. Use Your XREAL, VITURE , Rokid, RayNeo, Oculus, Meta Quest Glasses
 
-### click image to watch video [ml-sharp Navotas](https://youtu.be/egaik88v2WY?si=C4t7jL6CJ9JvdgX0)
+### click image to watch video [ml-sharp SLUM LIFE](https://youtu.be/bWuRMWI0Mlg?si=C4t7jL6CJ9JvdgX0)
 
-[![ml-sharp-3d-sbs-video](https://i.ytimg.com/vi/egaik88v2WY/maxresdefault.jpg)](https://youtu.be/egaik88v2WY?si=C4t7jL6CJ9JvdgX0)
+[![ml-sharp-3d-sbs-video](https://i.ytimg.com/vi/bWuRMWI0Mlg/maxresdefault.jpg)](https://youtu.be/bWuRMWI0Mlg?si=C4t7jL6CJ9JvdgX0)
 
-Here is the original WALKING NAVOTAS video. You can convert any video to 3D SBS
+Here is the original SLUM LIFE videos. You can convert any video to 3D SBS
 
-[WALKING NAVOTAS CITY'S EXTREME SLUMS](https://youtu.be/emPqaeJsRBk?si=NAd1_dyP2DJx6s9C)
+[WALKING EXTREME SLUMS](https://www.youtube.com/@jiggerstv)
 
 
 ## Support
