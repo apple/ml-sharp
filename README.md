@@ -640,4 +640,6 @@ Our codebase is built using multiple opensource contributions, please see [ACKNO
 Please check out the repository [LICENSE](LICENSE) before using the provided code and
 [LICENSE_MODEL](LICENSE_MODEL) for the released models.
 
+# Star History
 
+[![Star History Chart](https://api.star-history.com/svg?repos=iVideoGameBoss/ml-sharp&type=Date)](https://star-history.com/#iVideoGameBoss/ml-sharp&Date)
