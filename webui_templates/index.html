@@ -1,0 +1,2031 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ml-sharp - iVideoGameBoss - 3D Gaussian Splat Generator</title>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.169.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.169.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+            color: #e0e0e0;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            padding: 30px 0;
+        }
+
+        header h1 {
+            font-size: 2.5rem;
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            color: #888;
+            font-size: 1.1rem;
+        }
+
+        .main-content {
+            display: grid;
+            grid-template-columns: 350px 1fr;
+            gap: 20px;
+            min-height: 600px;
+        }
+
+        .sidebar {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 16px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        /* Mode Tabs */
+        .mode-tabs {
+            display: flex;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            padding: 4px;
+            gap: 5px;
+        }
+
+        .mode-btn {
+            flex: 1;
+            padding: 10px;
+            background: transparent;
+            border: none;
+            color: #888;
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+            font-weight: 600;
+        }
+
+        .mode-btn.active {
+            background: rgba(0, 212, 255, 0.15);
+            color: #00d4ff;
+        }
+
+        /* Input Controls */
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .input-group label {
+            color: #ccc;
+            font-size: 0.9rem;
+            font-weight: 500;
+        }
+
+        .path-input-container {
+            display: flex;
+            gap: 8px;
+        }
+
+        .path-input-container input[type="text"] {
+            flex: 1;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            background: rgba(0, 0, 0, 0.2);
+            color: #fff;
+            outline: none;
+            min-width: 0;
+        }
+
+        .path-input-container input[type="text"]:focus {
+            border-color: #00d4ff;
+        }
+
+        .browse-btn {
+            padding: 0 16px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px;
+            color: #fff;
+            cursor: pointer;
+            white-space: nowrap;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .browse-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+            border-color: #fff;
+        }
+
+        .input-group .hint {
+            font-size: 0.75rem;
+            color: #666;
+            line-height: 1.4;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 15px;
+        }
+
+        .radio-group label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            cursor: pointer;
+            font-weight: normal;
+            font-size: 0.9rem;
+        }
+
+        .upload-zone {
+            border: 2px dashed rgba(255, 255, 255, 0.2);
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-zone:hover,
+        .upload-zone.dragover {
+            border-color: #00d4ff;
+            background: rgba(0, 212, 255, 0.1);
+        }
+
+        .upload-zone svg {
+            width: 48px;
+            height: 48px;
+            margin-bottom: 12px;
+            color: #666;
+        }
+
+        .upload-zone p {
+            color: #888;
+            margin-bottom: 8px;
+        }
+
+        .upload-zone .supported {
+            font-size: 0.85rem;
+            color: #666;
+        }
+
+        #file-input {
+            display: none;
+        }
+
+        .preview-container {
+            display: none;
+            margin-bottom: 20px;
+        }
+
+        .preview-container.visible {
+            display: block;
+        }
+
+        .preview-container img,
+        .preview-container video {
+            width: 100%;
+            border-radius: 8px;
+            margin-bottom: 8px;
+        }
+
+        .preview-info {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .reset-app-btn {
+            width: 100%;
+            padding: 20px;
+            background: rgba(239, 68, 68, 0.15);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: 12px;
+            color: #f87171;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            margin-bottom: 20px;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .reset-app-btn:hover {
+            background: rgba(239, 68, 68, 0.25);
+            transform: translateY(-2px);
+        }
+
+        /* NEW GPU WARNING STYLE */
+        .gpu-warning {
+            margin-top: 15px;
+            font-size: 0.85rem;
+            color: #fbbf24;
+            /* Amber */
+            background: rgba(0, 0, 0, 0.2);
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid rgba(251, 191, 36, 0.3);
+            line-height: 1.4;
+            display: none;
+        }
+
+        .generate-btn {
+            width: 100%;
+            padding: 16px;
+            background: linear-gradient(135deg, #00d4ff, #7b2ff7);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .generate-btn:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(0, 212, 255, 0.3);
+        }
+
+        .generate-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .generate-btn .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        .generate-btn.loading .spinner {
+            display: block;
+        }
+
+        .generate-btn.loading .btn-text {
+            display: none;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* STOP BUTTON */
+        .stop-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(239, 68, 68, 0.8);
+            border: none;
+            border-radius: 12px;
+            color: white;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 10px;
+        }
+
+        .stop-btn:hover {
+            background: rgba(239, 68, 68, 1.0);
+        }
+
+        .stop-btn.visible {
+            display: flex;
+        }
+
+        .status-message {
+            padding: 12px;
+            border-radius: 8px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .status-message.visible {
+            display: block;
+        }
+
+        .status-message.success {
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            color: #22c55e;
+        }
+
+        .status-message.error {
+            background: rgba(239, 68, 68, 0.2);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            color: #ef4444;
+        }
+
+        .status-message.info {
+            background: rgba(0, 212, 255, 0.2);
+            border: 1px solid rgba(0, 212, 255, 0.3);
+            color: #00d4ff;
+        }
+
+        .download-section {
+            display: none;
+            margin-top: 20px;
+        }
+
+        .download-section.visible {
+            display: block;
+        }
+
+        .download-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(34, 197, 94, 0.2);
+            border: 1px solid rgba(34, 197, 94, 0.3);
+            border-radius: 8px;
+            color: #22c55e;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            text-decoration: none;
+        }
+
+        .download-btn:hover {
+            background: rgba(34, 197, 94, 0.3);
+        }
+
+        .viewer-container {
+            background: rgba(0, 0, 0, 0.3);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+            position: relative;
+            min-height: 600px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .viewer-container:fullscreen,
+        .viewer-container:-webkit-full-screen {
+            width: 100vw;
+            height: 100vh;
+            border-radius: 0;
+            background: #000;
+        }
+
+        .viewer-placeholder {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: #666;
+            z-index: 5;
+        }
+
+        .viewer-placeholder svg {
+            width: 80px;
+            height: 80px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        .viewer-placeholder p {
+            font-size: 1.1rem;
+        }
+
+        #splat-canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+            display: none;
+            outline: none;
+            object-fit: contain;
+        }
+
+        #splat-canvas.visible {
+            display: block;
+        }
+
+        /* VIDEO CONTROLS */
+        .video-controls {
+            position: absolute;
+            bottom: 70px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: none;
+            flex-direction: column;
+            gap: 5px;
+            width: 80%;
+            max-width: 600px;
+            z-index: 15;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .video-controls.visible {
+            display: flex;
+        }
+
+        .video-scrubber {
+            width: 100%;
+            cursor: pointer;
+        }
+
+        .video-buttons {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 15px;
+            color: #00d4ff;
+        }
+
+        .video-btn {
+            background: none;
+            border: none;
+            color: #fff;
+            cursor: pointer;
+            font-size: 1.2rem;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: color 0.2s;
+        }
+
+        .video-btn:hover {
+            color: #00d4ff;
+        }
+
+        .video-info {
+            font-size: 0.8rem;
+            color: #aaa;
+            text-align: center;
+        }
+
+        .viewer-controls {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            color: #aaa;
+            display: none;
+            text-align: center;
+            max-width: 90%;
+            z-index: 10;
+        }
+
+        .viewer-controls.visible {
+            display: block;
+        }
+
+        .viewer-controls strong {
+            color: #fff;
+        }
+
+        .viewer-controls .keys {
+            margin-top: 6px;
+            font-size: 0.8rem;
+            color: #666;
+        }
+
+        .progress-bar {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 200px;
+            text-align: center;
+            display: none;
+            z-index: 10;
+        }
+
+        .progress-bar.visible {
+            display: block;
+        }
+
+        .progress-bar-track {
+            height: 4px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 2px;
+            overflow: hidden;
+            margin-bottom: 8px;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #00d4ff, #7b2ff7);
+            border-radius: 2px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-bar-text {
+            font-size: 0.85rem;
+            color: #888;
+        }
+
+        .device-badge {
+            display: inline-block;
+            padding: 4px 10px;
+            background: rgba(0, 212, 255, 0.2);
+            border-radius: 20px;
+            font-size: 0.8rem;
+            color: #00d4ff;
+            margin-top: 10px;
+        }
+
+        .device-badge.cuda {
+            background: rgba(118, 185, 0, 0.2);
+            color: #76b900;
+        }
+
+        .top-controls {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: none;
+            gap: 10px;
+            z-index: 10;
+        }
+
+        .top-controls.visible {
+            display: flex;
+        }
+
+        .control-btn {
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 6px;
+            color: #fff;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        .control-btn svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        footer {
+            text-align: center;
+            padding: 30px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+
+        footer a {
+            color: #00d4ff;
+            text-decoration: none;
+        }
+
+        @media (max-width: 900px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+
+            .viewer-container {
+                min-height: 400px;
+            }
+        }
+
+        .coffee-btn {
+            background-color: #77dd77;
+            color: white;
+            border-radius: 30px;
+            padding: 10px 20px;
+            display: inline-block;
+            text-decoration: none;
+            font-family: sans-serif;
+            font-weight: bold;
+            font-size: 12px;
+            transition: transform 0.2s, background-color 0.2s;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .coffee-btn:hover {
+            background-color: #66c266;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 8px rgba(0, 0, 0, 0.15);
+        }
+
+        /* New Select Style */
+        .quality-select {
+            width: 100%;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: white;
+            border-radius: 8px;
+            outline: none;
+            cursor: pointer;
+        }
+
+        .quality-select:focus {
+            border-color: #00d4ff;
+        }
+
+        .quality-select option {
+            background: #1a1a2e;
+        }
+
+        .checkbox-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px;
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 8px;
+            margin-bottom: 15px;
+        }
+
+        .checkbox-container input[type="checkbox"] {
+            transform: scale(1.2);
+            cursor: pointer;
+        }
+
+        /* SBS Preview Modal */
+        .sbs-preview-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: rgba(0, 0, 0, 0.95);
+            z-index: 9999;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+        }
+
+        .sbs-preview-modal.visible {
+            display: flex;
+        }
+
+        .sbs-preview-modal img {
+            max-width: 100%;
+            max-height: 90vh;
+            object-fit: contain;
+        }
+
+        .sbs-preview-close {
+            position: absolute;
+            top: 20px;
+            right: 30px;
+            font-size: 40px;
+            color: #fff;
+            cursor: pointer;
+            z-index: 10000;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+        }
+
+        .sbs-preview-close:hover {
+            opacity: 1;
+        }
+
+        .sbs-preview-fullscreen {
+            position: absolute;
+            top: 20px;
+            right: 90px;
+            font-size: 24px;
+            color: #fff;
+            cursor: pointer;
+            z-index: 10000;
+            opacity: 0.7;
+            transition: opacity 0.2s;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 6px;
+            padding: 8px 14px;
+        }
+
+        .sbs-preview-fullscreen:hover {
+            opacity: 1;
+            background: rgba(255, 255, 255, 0.2);
+        }
+
+        /* Hide controls in true fullscreen for clean view */
+        .sbs-preview-modal:fullscreen,
+        .sbs-preview-modal:-webkit-full-screen {
+            background: #000 !important;
+            display: block !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        .sbs-preview-modal:fullscreen>*:not(img),
+        .sbs-preview-modal:-webkit-full-screen>*:not(img) {
+            display: none !important;
+            width: 0 !important;
+            height: 0 !important;
+            position: absolute !important;
+            left: -9999px !important;
+        }
+
+        .sbs-preview-modal:fullscreen img,
+        .sbs-preview-modal:-webkit-full-screen img {
+            display: block !important;
+            position: absolute !important;
+            top: 0 !important;
+            left: 0 !important;
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            max-height: none !important;
+            object-fit: contain !important;
+            transform: none !important;
+        }
+
+        /* Fullscreen for the IMAGE element itself */
+        #sbs-preview-image:fullscreen,
+        #sbs-preview-image:-webkit-full-screen {
+            width: 100vw !important;
+            height: 100vh !important;
+            max-width: none !important;
+            max-height: none !important;
+            object-fit: contain !important;
+            background: #000 !important;
+        }
+
+        .sbs-preview-hint {
+            color: #888;
+            margin-top: 15px;
+            font-size: 0.9rem;
+        }
+
+        .sbs-preview-btn {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0, 212, 255, 0.15);
+            border: 1px solid rgba(0, 212, 255, 0.4);
+            border-radius: 8px;
+            color: #00d4ff;
+            font-size: 0.95rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .sbs-preview-btn:hover {
+            background: rgba(0, 212, 255, 0.25);
+        }
+
+        .sbs-preview-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .sbs-preview-btn .spinner {
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(0, 212, 255, 0.3);
+            border-top-color: #00d4ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            display: none;
+        }
+
+        .sbs-preview-btn.loading .spinner {
+            display: inline-block;
+        }
+
+        .sbs-preview-btn.loading .btn-text {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <header>
+            <h1>ml-sharp - iVideoGameBoss</h1>
+            <a href="https://github.com/iVideoGameBoss/ml-sharp" target="_blank">Single-Image/Video to 3D Gaussian Splat
+                Generator</a>
+            <div id="device-info"></div>
+            <br>
+            <div class="coffee-container">
+                <a href="https://buymeacoffee.com/ivideogameboss" target="_blank" class="coffee-btn">BuyMeACoffee</a>
+            </div>
+        </header>
+
+        <div class="main-content">
+            <div class="sidebar">
+                <div class="mode-tabs">
+                    <button class="mode-btn active" data-mode="create" onclick="setMode('create')">Create New</button>
+                    <button class="mode-btn" data-mode="webcam" onclick="setMode('webcam')">Webcam</button>
+                    <button class="mode-btn" data-mode="load" onclick="setMode('load')">Load Existing</button>
+                </div>
+
+                <div class="input-group" style="margin-bottom:10px; margin-top:10px;">
+                    <label>Performance Mode:</label>
+                    <select id="quality-selector" class="quality-select">
+                        <option value="fast" selected>Fast (FP16/Half-Precision) - Best for 2060/Webcam</option>
+                        <option value="balanced">High Quality (FP32/Full-Precision)</option>
+                    </select>
+                </div>
+
+                <!-- Create View -->
+                <div id="create-view">
+                    <div class="upload-zone" id="upload-zone">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                        <p>Drop an image or video here</p>
+                        <span class="supported">Images (PNG, JPG) & Videos (MP4, MOV)</span>
+                        <input type="file" id="file-input" accept="image/*,video/*">
+                    </div>
+
+                    <div class="preview-container" id="preview-container">
+                        <img id="preview-image" src="" alt="Preview" style="display:none;">
+                        <video id="preview-video" controls style="display:none;"></video>
+                        <div class="preview-info" id="preview-info"></div>
+
+                        <!-- Video Options -->
+                        <div id="video-options" style="display:none; margin-top:10px;">
+
+                            <!-- BATCH SIZE SELECTOR -->
+                            <div class="input-group" style="margin-bottom: 12px;">
+                                <label>Processing Speed (Batch Size):</label>
+                                <select id="batch-size" class="quality-select">
+                                    <option value="1" selected>1 Frame (Safe/Default) - Works on 8GB VRAM</option>
+                                    <option value="2">2 Frames - Faster (Requires ~12GB VRAM)</option>
+                                    <option value="4">4 Frames - Very Fast (Requires ~16GB+ VRAM)</option>
+                                    <option value="8">8 Frames - Extreme (Requires 24GB+ 3090/4090/5090)</option>
+                                </select>
+                                <small class="hint">Higher batch sizes use more GPU memory. If it crashes, it will
+                                    auto-revert to 1.</small>
+                            </div>
+
+                            <div class="checkbox-container">
+                                <input type="checkbox" id="sbs-toggle">
+                                <label for="sbs-toggle" style="cursor:pointer; color: #00d4ff;">Generate SBS 3D Movie
+                                    (Requires CUDA)</label>
+                            </div>
+
+                            <!-- New Settings Container -->
+                            <div id="sbs-settings"
+                                style="display:none; padding-left: 20px; border-left: 2px solid #00d4ff; margin-top: 10px;">
+
+                                <!-- Opacity Threshold -->
+                                <div class="input-group" style="margin-bottom: 8px;">
+                                    <label>Halo Removal (Opacity Cutoff):</label>
+                                    <select id="sbs-opacity" class="quality-select">
+                                        <option value="0.0" selected>None (Full Detail)</option>
+                                        <option value="0.05">Low (0.05)</option>
+                                        <option value="0.1">Medium (0.1)</option>
+                                        <option value="0.2">High (0.2)</option>
+                                        <option value="0.3">Aggressive (0.3)</option>
+                                        <option value="0.4">Aggressive (0.4)</option>
+                                        <option value="0.5">Aggressive (0.5)</option>
+                                        <option value="0.6">Aggressive (0.6)</option>
+                                    </select>
+                                    <small class="hint">Removes ghostly edges. Higher values fix halos but may thin out
+                                        hair.</small>
+                                </div>
+
+                                <!-- Stereo Offset -->
+                                <div class="input-group" style="margin-bottom: 8px;">
+                                    <label>3D Depth Intensity (Stereo Offset):</label>
+                                    <select id="sbs-offset" class="quality-select">
+                                        <option value="0.005">Very Subtle (0.005)</option>
+                                        <option value="0.015" selected>Standard (0.015) - Recommended</option>
+                                        <option value="0.02">Moderate (0.02)</option>
+                                        <option value="0.025">Enhanced (0.025)</option>
+                                        <option value="0.03">Strong (0.03)</option>
+                                        <option value="0.06">Intense (0.06)</option>
+                                        <option value="0.1">Extreme (0.10)</option>
+                                    </select>
+                                    <small class="hint">Distance between eyes. Higher values increase depth but may
+                                        cause eye strain.</small>
+                                </div>
+
+                                <!-- Brightness -->
+                                <div class="input-group" style="margin-bottom: 8px;">
+                                    <label>Brightness Boost:</label>
+                                    <select id="sbs-brightness" class="quality-select">
+                                        <option value="1.0" selected>Original (1.0)</option>
+                                        <option value="1.05">Slight Boost (1.05)</option>
+                                        <option value="1.2">Bright (1.2)</option>
+                                        <option value="1.5">Very Bright (1.5)</option>
+                                    </select>
+                                    <small class="hint">Increases output brightness. Lower values reduce artifact
+                                        glow.</small>
+                                </div>
+
+                                <!-- Frame Skip (Speed) -->
+                                <div class="input-group" style="margin-bottom: 8px;">
+                                    <label>Frame Skip (Speed Boost):</label>
+                                    <select id="sbs-frame-skip" class="quality-select">
+                                        <option value="1" selected>Process All Frames (1x)</option>
+                                        <option value="2">Every 2nd Frame (2x Speed)</option>
+                                        <option value="3">Every 3rd Frame (3x Speed)</option>
+                                        <option value="4">Every 4th Frame (4x Speed)</option>
+                                        <option value="5">Every 5th Frame (5x Speed)</option>
+                                    </select>
+                                    <small class="hint">Skip frames for faster processing. Audio stays synced.
+                                        Higher skip = faster but choppier video.</small>
+                                </div>
+
+                                <!-- SBS Preview Button -->
+
+                                <button class="sbs-preview-btn" id="sbs-preview-btn" type="button">
+                                    <span class="spinner"></span>
+                                    <span class="btn-text">👁️ Preview SBS Frame</span>
+                                </button>
+                                <small class="hint" style="display:block; margin-top:5px;">
+                                    Scrub the video above, then click to preview the 3D effect with current settings.
+                                </small>
+                            </div>
+
+                            <small class="hint" style="display:block; margin-top:10px; color:#888;">
+                                Creates a 3840x1080 SBS video with audio. Slow processing.
+                            </small>
+                        </div>
+                    </div>
+
+                    <button class="generate-btn" id="generate-btn" disabled>
+                        <span class="spinner"></span>
+                        <span class="btn-text">Generate 3D Gaussian Splat</span>
+                    </button>
+
+                    <button class="stop-btn" id="stop-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                        Stop Processing
+                    </button>
+                </div>
+
+                <!-- Webcam View -->
+                <div id="webcam-view" style="display:none;">
+                    <div class="video-container"
+                        style="position: relative; border-radius: 12px; overflow: hidden; background: #000; margin-bottom: 20px;">
+                        <video id="webcam-feed" autoplay playsinline
+                            style="width: 100%; height: auto; display: block;"></video>
+                        <canvas id="webcam-capture-canvas" style="display:none;"></canvas>
+                        <!-- Flash Overlay -->
+                        <div id="webcam-flash"
+                            style="position:absolute; top:0; left:0; width:100%; height:100%; background:white; opacity:0; pointer-events:none; transition: opacity 0.2s;">
+                        </div>
+                    </div>
+
+                    <div class="input-group" style="margin-bottom: 20px;">
+                        <button class="generate-btn" id="start-camera-btn"
+                            style="background: rgba(255, 255, 255, 0.1);">
+                            Start Camera
+                        </button>
+                    </div>
+
+                    <div class="input-group" id="webcam-controls" style="display:none;">
+                        <button class="generate-btn" id="capture-btn">
+                            <span class="btn-text">📸 Capture & Generate 3D</span>
+                            <span class="spinner"></span>
+                        </button>
+                        <!-- REMOVED Auto-Refresh Checkbox -->
+                    </div>
+                </div>
+
+                <!-- Load Existing View -->
+                <div id="load-view" style="display:none;">
+                    <div class="input-group">
+                        <label>Content Type:</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="load-mode" value="single" checked
+                                    onchange="toggleLoadMode('single')"> Single PLY File</label>
+                            <label><input type="radio" name="load-mode" value="video"
+                                    onchange="toggleLoadMode('video')"> Video Sequence (Folder)</label>
+                        </div>
+                    </div>
+
+                    <div class="input-group">
+                        <label>Local Path or Browse:</label>
+                        <div class="path-input-container">
+                            <input type="text" id="local-path-input" placeholder="Path on server (optional)">
+                            <button class="browse-btn" id="browse-btn">Browse...</button>
+                        </div>
+                        <small class="hint" id="path-hint">
+                            Use <strong>Browse</strong> to select files/folders directly (Recommended for lag-free
+                            playback), <br>
+                            or type absolute path if files are on the server machine.
+                        </small>
+                    </div>
+
+                    <button class="generate-btn" id="load-local-btn">
+                        <span class="spinner"></span>
+                        <span class="btn-text">Load Viewer</span>
+                    </button>
+
+                    <input type="file" id="local-file-picker" accept=".ply" style="display:none;">
+                    <input type="file" id="local-folder-picker" webkitdirectory directory style="display:none;">
+                </div>
+
+                <div class="status-message" id="status-message"></div>
+
+                <div class="download-section" id="download-section">
+                    <a href="#" class="download-btn" id="download-btn">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg>
+                        Download File
+                    </a>
+                </div>
+
+                <button class="reset-app-btn" id="reset-app-btn">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24"
+                        stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                            d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+                    </svg>
+                    Reset / Start Over
+                </button>
+
+                <!-- STATIC GPU WARNING MESSAGE -->
+                <div id="gpu-warning" class="gpu-warning">
+                    Loading frames into GPU memory. Please be patient. You may see a black screen while the first frames
+                    initialize. When loaded, you will see the first frame. It takes time. If you don't have enough
+                    memory to load all files then nothing will happen.
+                </div>
+            </div>
+
+            <div class="viewer-container" id="viewer-container">
+                <div class="viewer-placeholder" id="viewer-placeholder">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1"
+                            d="M14 10l-2 1m0 0l-2-1m2 1v2.5M20 7l-2 1m2-1l-2-1m2 1v2.5M14 4l-2-1-2 1M4 7l2-1M4 7l2 1M4 7v2.5M12 21l-2-1m2 1l2-1m-2 1v-2.5M6 18l-2-1v-2.5M18 18l2-1v-2.5" />
+                    </svg>
+                    <p>3D viewer will appear here</p>
+                </div>
+
+                <div class="progress-bar" id="progress-bar">
+                    <div class="progress-bar-track">
+                        <div class="progress-bar-fill" id="progress-bar-fill"></div>
+                    </div>
+                    <div class="progress-bar-text" id="progress-bar-text">Loading...</div>
+                </div>
+
+                <canvas id="splat-canvas"></canvas>
+
+                <div class="top-controls" id="top-controls">
+                    <button class="control-btn" id="sbs-btn" title="SBS VR Mode (Side-by-Side)">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <!-- Custom goggles icon approximation -->
+                            <circle cx="6" cy="12" r="3" stroke="currentColor" stroke-width="2" />
+                            <circle cx="18" cy="12" r="3" stroke="currentColor" stroke-width="2" />
+                            <path d="M9 12h6" stroke="currentColor" stroke-width="2" />
+                        </svg>
+                        &nbsp;SBS Full Screen
+                    </button>
+                    <button class="control-btn" id="reset-camera-btn" title="Reset Camera">Reset Camera</button>
+                    <button class="control-btn" id="fullscreen-btn" title="Toggle Fullscreen">
+                        <svg id="icon-expand" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                            stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M4 8V4m0 0h4M4 4l5 5m11-1V4m0 0h-4m4 4l-5-5M4 16v4m0 0h4m-4 0l5-5m11 5l-5-5m5 5v-4m0 4h-4" />
+                        </svg>
+                        <svg id="icon-compress" style="display:none;" xmlns="http://www.w3.org/2000/svg" fill="none"
+                            viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 20v-6h-6m12 0v6h6m-6-14v-6h6m-12 0v6h-6" />
+                        </svg>
+                    </button>
+                </div>
+
+                <!-- Video Sequence Controls -->
+                <div class="video-controls" id="video-controls">
+                    <input type="range" class="video-scrubber" id="video-scrubber" min="0" value="0" step="1">
+                    <div class="video-buttons">
+                        <button class="video-btn" id="vid-play-btn">▶</button>
+                        <span class="video-info" id="vid-info">Frame: 0 / 0</span>
+                    </div>
+                </div>
+
+                <div class="viewer-controls" id="viewer-controls">
+                    <strong>Controls:</strong> Drag to look around | Scroll to adjust speed
+                    <div class="keys">W/S: forward/back | A/D: left/right | Q/E: up/down</div>
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Powered by <a href="https://github.com/apple/ml-sharp" target="_blank">SHARP</a> - Single-image
+                High-fidelity Avatar Reconstruction via Photorealistic rendering</p>
+        </footer>
+    </div>
+
+    <!-- SBS Preview Fullscreen Modal -->
+    <div class="sbs-preview-modal" id="sbs-preview-modal">
+        <button class="sbs-preview-fullscreen" id="sbs-preview-fullscreen" title="Toggle Fullscreen">⛶</button>
+        <span class="sbs-preview-close" id="sbs-preview-close">&times;</span>
+        <img id="sbs-preview-image" src="" alt="SBS Preview">
+        <p class="sbs-preview-hint">Press ESC to close | F for fullscreen | Use this to test your 3D settings</p>
+    </div>
+
+    <!-- Gaussian Splat Viewer -->
+    <script src="/static/gaussian-splat-viewer.js?v=13"></script>
+
+    <script>
+        // Global state
+        let selectedFile = null;
+        let isVideoMode = false;
+        let activeJobId = null;
+        let statusPollInterval = null;
+        let lastLoadedFrameUrl = null;
+
+        // Video frame estimation
+        let videoTotalFrames = 0;
+        let videoFps = 30;
+        let videoFileName = '';
+
+        let videoData = {
+            plyFiles: [],
+            baseUrl: "",
+            currentFrame: 0,
+            isPlaying: false,
+            fps: 30,
+            timer: null,
+            blobUrls: []
+        };
+        let viewer = null;
+
+        // DOM Elements
+        const createView = document.getElementById('create-view');
+        const webcamView = document.getElementById('webcam-view');
+        const loadView = document.getElementById('load-view');
+        const loadLocalBtn = document.getElementById('load-local-btn');
+        const localPathInput = document.getElementById('local-path-input');
+        const browseBtn = document.getElementById('browse-btn');
+        const localFilePicker = document.getElementById('local-file-picker');
+        const localFolderPicker = document.getElementById('local-folder-picker');
+        const pathHint = document.getElementById('path-hint');
+        const uploadZone = document.getElementById('upload-zone');
+        const fileInput = document.getElementById('file-input');
+        const previewContainer = document.getElementById('preview-container');
+        const previewImage = document.getElementById('preview-image');
+        const previewVideo = document.getElementById('preview-video');
+        const previewInfo = document.getElementById('preview-info');
+        const generateBtn = document.getElementById('generate-btn');
+        const stopBtn = document.getElementById('stop-btn');
+        const statusMessage = document.getElementById('status-message');
+        const downloadSection = document.getElementById('download-section');
+        const downloadBtn = document.getElementById('download-btn');
+        const viewerPlaceholder = document.getElementById('viewer-placeholder');
+        const viewerContainer = document.getElementById('viewer-container');
+        const resetAppBtn = document.getElementById('reset-app-btn');
+        const gpuWarning = document.getElementById('gpu-warning');
+        let splatCanvas = document.getElementById('splat-canvas');
+        const viewerControls = document.getElementById('viewer-controls');
+        const videoControls = document.getElementById('video-controls');
+        const vidPlayBtn = document.getElementById('vid-play-btn');
+        const vidScrubber = document.getElementById('video-scrubber');
+        const vidInfo = document.getElementById('vid-info');
+        const deviceInfo = document.getElementById('device-info');
+        const progressBar = document.getElementById('progress-bar');
+        const progressBarFill = document.getElementById('progress-bar-fill');
+        const progressBarText = document.getElementById('progress-bar-text');
+        const topControls = document.getElementById('top-controls');
+        const sbsBtn = document.getElementById('sbs-btn');
+        const resetCameraBtn = document.getElementById('reset-camera-btn');
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const iconExpand = document.getElementById('icon-expand');
+        const iconCompress = document.getElementById('icon-compress');
+
+        // Quality Selector
+        const qualitySelector = document.getElementById('quality-selector');
+
+        // Batch Size Selector
+        const batchSizeSelector = document.getElementById('batch-size');
+
+        // Video Options
+        const videoOptions = document.getElementById('video-options');
+        const sbsToggle = document.getElementById('sbs-toggle');
+        const sbsSettings = document.getElementById('sbs-settings');
+        const sbsOpacity = document.getElementById('sbs-opacity');
+        const sbsOffset = document.getElementById('sbs-offset');
+        const sbsBrightness = document.getElementById('sbs-brightness');
+        const sbsFrameSkip = document.getElementById('sbs-frame-skip');
+
+        // Webcam Elements
+        const webcamFeed = document.getElementById('webcam-feed');
+        const startCameraBtn = document.getElementById('start-camera-btn');
+        const captureBtn = document.getElementById('capture-btn');
+        const webcamControls = document.getElementById('webcam-controls');
+        const webcamCanvas = document.getElementById('webcam-capture-canvas');
+        const webcamFlash = document.getElementById('webcam-flash');
+        // Removed autoRefreshCheck reference
+        let webcamStream = null;
+
+        init();
+
+        async function init() {
+            // FORCE UNCHECK ON LOAD
+            if (sbsToggle) sbsToggle.checked = false;
+            if (sbsSettings) sbsSettings.style.display = 'none';
+
+            setupEventListeners();
+            setupResizeObserver();
+            await checkServerStatus();
+        }
+
+        function setupResizeObserver() {
+            const resizeObserver = new ResizeObserver(entries => {
+                for (let entry of entries) {
+                    window.dispatchEvent(new Event('resize'));
+                }
+            });
+            resizeObserver.observe(viewerContainer);
+        }
+
+        function setupEventListeners() {
+            uploadZone.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', handleFileSelect);
+            uploadZone.addEventListener('dragover', (e) => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+            uploadZone.addEventListener('dragleave', () => { uploadZone.classList.remove('dragover'); });
+            uploadZone.addEventListener('drop', (e) => { e.preventDefault(); uploadZone.classList.remove('dragover'); if (e.dataTransfer.files.length > 0) handleFile(e.dataTransfer.files[0]); });
+            generateBtn.addEventListener('click', handleGenerate);
+            stopBtn.addEventListener('click', handleStopJob);
+            loadLocalBtn.addEventListener('click', handleLoadLocal);
+            browseBtn.addEventListener('click', () => { const mode = document.querySelector('input[name="load-mode"]:checked').value; if (mode === 'single') localFilePicker.click(); else localFolderPicker.click(); });
+            localFilePicker.addEventListener('change', (e) => { if (e.target.files.length > 0) handleDirectLoadSingle(e.target.files[0]); });
+            localFolderPicker.addEventListener('change', (e) => { if (e.target.files.length > 0) handleDirectLoadVideo(e.target.files); });
+            resetAppBtn.addEventListener('click', () => { location.reload(); });
+
+            sbsBtn.addEventListener('click', toggleSBS);
+
+            resetCameraBtn.addEventListener('click', () => { if (viewer) viewer.resetCamera(); });
+            fullscreenBtn.addEventListener('click', toggleFullscreen);
+            document.addEventListener('fullscreenchange', updateFullscreenIcon);
+            document.addEventListener('webkitfullscreenchange', updateFullscreenIcon);
+            vidPlayBtn.addEventListener('click', toggleVideoPlayback);
+            vidScrubber.addEventListener('input', (e) => { goToFrame(parseInt(e.target.value)); });
+
+            // Webcam
+            startCameraBtn.addEventListener('click', startWebcam);
+            captureBtn.addEventListener('click', captureAndGenerate);
+
+            // SBS Settings Toggle
+            sbsToggle.addEventListener('change', function () {
+                if (this.checked) {
+                    sbsSettings.style.display = 'block';
+                    updateFrameEstimate(); // Update when SBS mode toggled
+                } else {
+                    sbsSettings.style.display = 'none';
+                    updateFrameEstimate(); // Reset estimate when SBS toggled off
+                }
+            });
+
+            // Frame Skip change listener
+            sbsFrameSkip.addEventListener('change', updateFrameEstimate);
+
+            // SBS Preview
+            const sbsPreviewBtn = document.getElementById('sbs-preview-btn');
+            const sbsPreviewModal = document.getElementById('sbs-preview-modal');
+            const sbsPreviewClose = document.getElementById('sbs-preview-close');
+            const sbsPreviewImage = document.getElementById('sbs-preview-image');
+
+            if (sbsPreviewBtn) {
+                sbsPreviewBtn.addEventListener('click', handleSbsPreview);
+            }
+            if (sbsPreviewClose) {
+                sbsPreviewClose.addEventListener('click', closeSbsPreviewModal);
+            }
+            if (sbsPreviewModal) {
+                sbsPreviewModal.addEventListener('click', (e) => {
+                    if (e.target === sbsPreviewModal) closeSbsPreviewModal();
+                });
+            }
+
+            // Fullscreen button for SBS preview
+            const sbsPreviewFullscreenBtn = document.getElementById('sbs-preview-fullscreen');
+            if (sbsPreviewFullscreenBtn) {
+                sbsPreviewFullscreenBtn.addEventListener('click', toggleSbsPreviewFullscreen);
+            }
+
+            document.addEventListener('keydown', (e) => {
+                if (sbsPreviewModal && sbsPreviewModal.classList.contains('visible')) {
+                    if (e.key === 'Escape') {
+                        closeSbsPreviewModal();
+                    } else if (e.key === 'f' || e.key === 'F') {
+                        toggleSbsPreviewFullscreen();
+                    }
+                }
+            });
+        }
+
+        function toggleSBS() {
+            // Check if user is on Mac
+            const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0 || navigator.userAgent.toLowerCase().includes("mac");
+
+            if (isMac) {
+                showStatus("Feature is only supported on PC", "error");
+                return;
+            }
+
+            if (!viewer) return;
+            viewer.toggleStereo();
+            const isSBS = viewer.stereoMode;
+            if (isSBS) {
+                sbsBtn.style.background = "rgba(0, 212, 255, 0.4)";
+                sbsBtn.style.color = "#00d4ff";
+                if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                    toggleFullscreen();
+                }
+            } else {
+                sbsBtn.style.background = "";
+                sbsBtn.style.color = "";
+            }
+            window.focus();
+        }
+
+        /* --- MODE SWITCHING --- */
+        window.setMode = function (mode) {
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
+            document.querySelector(`.mode-btn[data-mode="${mode}"]`).classList.add('active');
+
+            createView.style.display = 'none';
+            loadView.style.display = 'none';
+            webcamView.style.display = 'none';
+
+            if (mode === 'create') {
+                createView.style.display = 'block';
+                stopWebcam();
+            } else if (mode === 'load') {
+                loadView.style.display = 'block';
+                stopWebcam();
+            } else if (mode === 'webcam') {
+                webcamView.style.display = 'block';
+            }
+        }
+
+        /* --- SBS PREVIEW FUNCTIONS --- */
+        async function handleSbsPreview() {
+            if (!selectedFile || !isVideoMode) {
+                showStatus("Please load a video first", "error");
+                return;
+            }
+
+            const sbsPreviewBtn = document.getElementById('sbs-preview-btn');
+            const sbsPreviewModal = document.getElementById('sbs-preview-modal');
+            const sbsPreviewImage = document.getElementById('sbs-preview-image');
+
+            // Get the current video time and convert to frame number
+            const videoEl = document.getElementById('preview-video');
+            if (!videoEl || !videoEl.duration) {
+                showStatus("Video not loaded properly", "error");
+                return;
+            }
+
+            // Estimate FPS (default to 30 if unknown)
+            const estimatedFps = 30;
+            const currentTime = videoEl.currentTime;
+            const frameNumber = Math.floor(currentTime * estimatedFps);
+
+            // Get current SBS settings
+            const quality = document.getElementById('quality-selector').value;
+            const opacityThreshold = document.getElementById('sbs-opacity').value;
+            const stereoOffset = document.getElementById('sbs-offset').value;
+            const brightnessFactor = document.getElementById('sbs-brightness').value;
+
+            // Show loading state
+            sbsPreviewBtn.classList.add('loading');
+            sbsPreviewBtn.disabled = true;
+            showStatus(`Generating SBS preview for frame ${frameNumber}...`, 'info');
+
+            try {
+                const formData = new FormData();
+                formData.append('video', selectedFile);
+                formData.append('frame_number', frameNumber);
+                formData.append('quality', quality);
+                formData.append('opacity_threshold', opacityThreshold);
+                formData.append('stereo_offset', stereoOffset);
+                formData.append('brightness_factor', brightnessFactor);
+
+                const response = await fetch('/preview_sbs_frame', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Preview generation failed');
+                }
+
+                // Get the image blob and display it
+                const imageBlob = await response.blob();
+                const imageUrl = URL.createObjectURL(imageBlob);
+
+                sbsPreviewImage.src = imageUrl;
+                sbsPreviewModal.classList.add('visible');
+                showStatus("SBS preview ready! View fullscreen to test the 3D effect.", "success");
+
+            } catch (error) {
+                console.error("SBS Preview error:", error);
+                showStatus("Preview failed: " + error.message, "error");
+            } finally {
+                sbsPreviewBtn.classList.remove('loading');
+                sbsPreviewBtn.disabled = false;
+            }
+        }
+
+        function closeSbsPreviewModal() {
+            const sbsPreviewModal = document.getElementById('sbs-preview-modal');
+            const sbsPreviewImage = document.getElementById('sbs-preview-image');
+
+            if (sbsPreviewModal) {
+                sbsPreviewModal.classList.remove('visible');
+            }
+            // Exit fullscreen if we're in it
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
+            }
+            // Revoke the blob URL to free memory
+            if (sbsPreviewImage && sbsPreviewImage.src.startsWith('blob:')) {
+                URL.revokeObjectURL(sbsPreviewImage.src);
+                sbsPreviewImage.src = '';
+            }
+        }
+
+        function toggleSbsPreviewFullscreen() {
+            const sbsPreviewModal = document.getElementById('sbs-preview-modal');
+            const sbsPreviewClose = document.getElementById('sbs-preview-close');
+            const sbsPreviewFullscreenBtn = document.getElementById('sbs-preview-fullscreen');
+            const sbsPreviewHint = sbsPreviewModal ? sbsPreviewModal.querySelector('.sbs-preview-hint') : null;
+            const topControls = document.getElementById('top-controls');
+
+            if (!sbsPreviewModal) return;
+
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                // Entering fullscreen - hide all controls
+                if (sbsPreviewClose) sbsPreviewClose.style.display = 'none';
+                if (sbsPreviewFullscreenBtn) sbsPreviewFullscreenBtn.style.display = 'none';
+                if (sbsPreviewHint) sbsPreviewHint.style.display = 'none';
+                if (topControls) topControls.style.display = 'none';
+
+                // Make the IMAGE itself fullscreen (not the modal)
+                const sbsPreviewImage = document.getElementById('sbs-preview-image');
+                if (sbsPreviewImage && sbsPreviewImage.requestFullscreen) {
+                    sbsPreviewImage.requestFullscreen();
+                } else if (sbsPreviewImage && sbsPreviewImage.webkitRequestFullscreen) {
+                    sbsPreviewImage.webkitRequestFullscreen();
+                }
+            } else {
+                // Exit fullscreen
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        }
+
+        // Listen for fullscreen exit to restore controls
+        document.addEventListener('fullscreenchange', handleSbsFullscreenChange);
+        document.addEventListener('webkitfullscreenchange', handleSbsFullscreenChange);
+
+        function handleSbsFullscreenChange() {
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                // Exited fullscreen - restore modal controls if modal is visible
+                const sbsPreviewModal = document.getElementById('sbs-preview-modal');
+                const sbsPreviewClose = document.getElementById('sbs-preview-close');
+                const sbsPreviewFullscreenBtn = document.getElementById('sbs-preview-fullscreen');
+                const sbsPreviewHint = sbsPreviewModal ? sbsPreviewModal.querySelector('.sbs-preview-hint') : null;
+                const topControls = document.getElementById('top-controls');
+
+                if (sbsPreviewModal && sbsPreviewModal.classList.contains('visible')) {
+                    if (sbsPreviewClose) sbsPreviewClose.style.display = '';
+                    if (sbsPreviewFullscreenBtn) sbsPreviewFullscreenBtn.style.display = '';
+                    if (sbsPreviewHint) sbsPreviewHint.style.display = '';
+                }
+                // Restore top controls visibility
+                if (topControls && topControls.classList.contains('visible')) {
+                    topControls.style.display = 'flex';
+                }
+            }
+        }
+
+        /* --- WEBCAM LOGIC --- */
+        async function startWebcam() {
+            try {
+                webcamStream = await navigator.mediaDevices.getUserMedia({
+                    video: {
+                        width: { ideal: 1280 },
+                        height: { ideal: 720 },
+                        facingMode: "user"
+                    }
+                });
+                webcamFeed.srcObject = webcamStream;
+                startCameraBtn.style.display = 'none';
+                webcamControls.style.display = 'block';
+                showStatus("Webcam started. Align your shot!", "info");
+            } catch (err) {
+                console.error("Webcam error:", err);
+                showStatus("Could not access webcam: " + err.message, "error");
+            }
+        }
+
+        function stopWebcam() {
+            if (webcamStream) {
+                webcamStream.getTracks().forEach(track => track.stop());
+                webcamStream = null;
+            }
+            startCameraBtn.style.display = 'block';
+            webcamControls.style.display = 'none';
+        }
+
+        function captureAndGenerate() {
+            if (!webcamStream) return;
+
+            // Visual flash
+            webcamFlash.style.opacity = '0.8';
+            setTimeout(() => { webcamFlash.style.opacity = '0'; }, 100);
+
+            const w = webcamFeed.videoWidth;
+            const h = webcamFeed.videoHeight;
+            webcamCanvas.width = w;
+            webcamCanvas.height = h;
+            const ctx = webcamCanvas.getContext('2d');
+            ctx.drawImage(webcamFeed, 0, 0, w, h);
+
+            webcamCanvas.toBlob((blob) => {
+                if (!blob) return;
+                const file = new File([blob], "webcam_capture.jpg", { type: "image/jpeg" });
+
+                // Use generation logic
+                selectedFile = file;
+                isVideoMode = false;
+
+                captureBtn.classList.add('loading');
+                captureBtn.disabled = true;
+
+                performGeneration().then(() => {
+                    captureBtn.classList.remove('loading');
+                    captureBtn.disabled = false;
+                });
+
+            }, 'image/jpeg', 0.95);
+        }
+
+        /* --- LOADING / GENERATION --- */
+        window.toggleLoadMode = function (mode) {
+            if (mode === 'single') { localPathInput.placeholder = "Absolute path on server (e.g. C:\\path\\file.ply)"; pathHint.textContent = "Enter absolute path to a .ply file"; } else { localPathInput.placeholder = "Absolute path to folder (e.g. C:\\path\\ply_sequence)"; pathHint.textContent = "Enter absolute path to a directory containing .ply files"; }
+        }
+        function handleDirectLoadSingle(file) { const url = URL.createObjectURL(file); isVideoMode = false; localPathInput.value = `[File Selected: ${file.name}]`; document.querySelector('.mode-tabs').style.display = 'none'; createView.style.display = 'none'; loadView.style.display = 'none'; resetAppBtn.style.display = 'flex'; loadSplatViewer(url, true); }
+        function handleDirectLoadVideo(fileList) { const files = Array.from(fileList).filter(f => f.name.toLowerCase().endsWith('.ply')); if (files.length === 0) { showStatus("No .ply files found.", "error"); return; } files.sort((a, b) => a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })); const blobUrls = files.map(f => URL.createObjectURL(f)); isVideoMode = true; localPathInput.value = `[Folder Selected: ${files.length} frames]`; document.querySelector('.mode-tabs').style.display = 'none'; createView.style.display = 'none'; loadView.style.display = 'none'; resetAppBtn.style.display = 'flex'; setupVideoPlayback({ ply_files: [], base_url: "", fps: 30 }, blobUrls); }
+        function handleFileSelect(e) { const files = e.target.files; if (files.length > 0) handleFile(files[0]); }
+        function handleFile(file) {
+            selectedFile = file;
+            const fileType = file.type;
+            previewContainer.classList.add('visible');
+            showStatus("File selected: " + file.name, "info");
+
+            if (fileType.startsWith('image/')) {
+                isVideoMode = false;
+                videoOptions.style.display = 'none';
+                previewImage.style.display = 'block';
+                previewVideo.style.display = 'none';
+                const reader = new FileReader();
+                reader.onload = (e) => { previewImage.src = e.target.result; };
+                reader.readAsDataURL(file);
+            } else if (fileType.startsWith('video/')) {
+                isVideoMode = true;
+                videoOptions.style.display = 'block';
+                previewImage.style.display = 'none';
+                previewVideo.style.display = 'block';
+                previewVideo.src = URL.createObjectURL(file);
+                videoFileName = file.name;
+                previewInfo.textContent = `${file.name} (Video - loading...)`;
+
+                // Get video duration and estimate frames when metadata loads
+                previewVideo.onloadedmetadata = () => {
+                    const duration = previewVideo.duration;
+                    videoFps = 30; // Assume 30fps (common default)
+                    videoTotalFrames = Math.ceil(duration * videoFps);
+                    updateFrameEstimate();
+                };
+            }
+            generateBtn.disabled = false;
+            generateBtn.querySelector('.btn-text').textContent = isVideoMode ? "Generate Video Splats" : "Generate 3D Gaussian Splat";
+            downloadSection.classList.remove('visible');
+        }
+
+        // Update frame estimation based on skip setting
+        function updateFrameEstimate() {
+            if (!isVideoMode || videoTotalFrames === 0) return;
+
+            const frameSkip = sbsToggle.checked ? parseInt(sbsFrameSkip.value) : 1;
+            const framesToRender = Math.ceil(videoTotalFrames / frameSkip);
+
+            if (sbsToggle.checked && frameSkip > 1) {
+                previewInfo.textContent = `${videoFileName} (~${videoTotalFrames} total → ${framesToRender} frames to render)`;
+            } else {
+                previewInfo.textContent = `${videoFileName} (~${videoTotalFrames} frames)`;
+            }
+        }
+
+        // Shared Generation Logic (Used by File Upload & Webcam)
+        async function performGeneration() {
+            hideStatus();
+            const formData = new FormData();
+            formData.append('image', selectedFile);
+            formData.append('quality', qualitySelector.value); // Pass quality setting
+
+            showStatus(`Generating (${qualitySelector.value} mode)...`, 'info');
+
+            try {
+                const response = await fetch('/generate', { method: 'POST', body: formData });
+                const data = await response.json();
+
+                if (data.success) {
+                    // If generated from Webcam, update view URL but optionally keep camera pos
+                    if (data.download_url) {
+                        downloadBtn.href = data.download_url;
+                        downloadBtn.innerHTML = `
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                        </svg> Download PLY File`;
+                        downloadSection.classList.add('visible');
+                    }
+
+                    // Unified Logic: Hide all inputs and show Reset button
+                    document.querySelector('.mode-tabs').style.display = 'none';
+                    createView.style.display = 'none';
+                    webcamView.style.display = 'none'; // Ensure webcam view is hidden too
+                    loadView.style.display = 'none';   // Ensure load view is hidden
+                    stopWebcam();                      // Stop the camera
+                    resetAppBtn.style.display = 'flex'; // Show the red reset button
+
+                    loadSplatViewer(data.view_url, true);
+                    showStatus("Generated successfully!", "success");
+
+                } else {
+                    showStatus(data.error || 'Failed', 'error');
+                }
+            } catch (error) {
+                showStatus('Error: ' + error.message, 'error');
+            }
+        }
+
+        async function handleGenerate() {
+            if (!selectedFile) return;
+            generateBtn.classList.add('loading');
+            generateBtn.disabled = true;
+
+            if (isVideoMode) {
+                hideStatus();
+                const formData = new FormData();
+                formData.append('video', selectedFile);
+                formData.append('quality', qualitySelector.value); // Pass quality setting
+
+                // Set Batch Size
+                formData.append('batch_size', batchSizeSelector.value);
+
+                // Set Mode: SBS Movie vs PLY Sequence
+                if (sbsToggle.checked) {
+                    formData.append('output_mode', 'sbs_movie');
+                    formData.append('opacity_threshold', sbsOpacity.value);
+                    formData.append('stereo_offset', sbsOffset.value);
+                    formData.append('brightness_factor', sbsBrightness.value);
+                    formData.append('frame_skip', sbsFrameSkip.value);
+
+                    showStatus('Starting SBS 3D Movie generation (Frames + Rendering)...(Stop at anytime to output movie)', 'info');
+                } else {
+                    formData.append('output_mode', 'ply_seq');
+                    showStatus('Initializing video generation...', 'info');
+                }
+
+                try {
+                    const response = await fetch('/generate_video', { method: 'POST', body: formData });
+                    const data = await response.json();
+                    if (data.success && data.job_id) { activeJobId = data.job_id; stopBtn.classList.add('visible'); startStatusPolling(data.job_id); } else { showStatus(data.error || 'Failed to start', 'error'); generateBtn.classList.remove('loading'); generateBtn.disabled = false; }
+                } catch (error) { showStatus('Error: ' + error.message, 'error'); generateBtn.classList.remove('loading'); generateBtn.disabled = false; }
+            } else {
+                await performGeneration();
+                generateBtn.classList.remove('loading');
+                generateBtn.disabled = false;
+            }
+        }
+
+        async function handleStopJob() { if (!activeJobId) return; stopBtn.disabled = true; stopBtn.textContent = "Stopping..."; try { await fetch(`/stop_job/${activeJobId}`, { method: 'POST' }); } catch (e) { console.error(e); } }
+
+        async function handleLoadLocal() {
+            const path = localPathInput.value.trim();
+            if (!path || path.startsWith('[')) { showStatus('Please enter path', 'error'); return; }
+            const mode = document.querySelector('input[name="load-mode"]:checked').value;
+            loadLocalBtn.classList.add('loading'); loadLocalBtn.disabled = true;
+            hideStatus();
+
+            try {
+                const response = await fetch('/scan_local', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ path, mode }) });
+                const data = await response.json();
+                if (data.success) { isVideoMode = (data.type === 'video'); handleSuccess(data); } else { showStatus(data.error || 'Failed', 'error'); }
+            } catch (error) { showStatus('Error: ' + error.message, 'error'); } finally { loadLocalBtn.classList.remove('loading'); loadLocalBtn.disabled = false; }
+        }
+
+        function startStatusPolling(jobId) {
+            viewerPlaceholder.style.display = 'none';
+            progressBar.classList.add('visible');
+            statusPollInterval = setInterval(async () => {
+                try {
+                    const res = await fetch(`/job_status/${jobId}`);
+                    const data = await res.json();
+                    if (res.status !== 200) { clearInterval(statusPollInterval); showStatus(data.error, 'error'); return; }
+
+                    const isSBS = (data.mode === 'sbs_movie');
+                    const percent = data.total > 0 ? Math.round((data.processed / data.total) * 100) : 0;
+                    progressBarFill.style.width = percent + '%';
+
+                    if (isSBS) {
+                        progressBarText.textContent = `Rendering SBS Movie: Frame ${data.processed} / ${data.total}`;
+                    } else {
+                        progressBarText.textContent = `Processing Frame ${data.processed} / ${data.total}`;
+                    }
+
+                    // Show progress in viewer if not SBS mode
+                    if (!isSBS && data.files.length > 0) {
+                        const lastFile = data.files[data.files.length - 1];
+                        const url = data.base_url + lastFile;
+                        if (url !== lastLoadedFrameUrl) {
+                            lastLoadedFrameUrl = url;
+                            if (!viewer) loadSplatViewer(url, true);
+                            else viewer.loadPly(url, false);
+                        }
+                    }
+
+                    if (data.status === 'done' || data.status === 'stopped' || data.status === 'error') {
+                        clearInterval(statusPollInterval);
+                        stopBtn.classList.remove('visible');
+                        generateBtn.classList.remove('loading');
+                        generateBtn.disabled = false;
+
+                        // Hide progress bar when done
+                        progressBar.classList.remove('visible');
+
+                        if (data.status === 'error') {
+                            showStatus('Error: ' + data.error, 'error');
+                        } else {
+                            if (isSBS) {
+                                // For SBS, we have a single MP4 file
+                                const finalFile = data.files[data.files.length - 1];
+                                showStatus("SBS Movie Generated Successfully! It is saved in the 'output' folder. It takes time to process all png's.", 'success');
+
+                                // --- NEW BUTTON LOGIC ---
+                                downloadBtn.removeAttribute('href'); // Disable direct download link
+                                downloadBtn.style.cursor = "pointer";
+
+                                // When clicked, tell server to open the folder window
+                                downloadBtn.onclick = async (e) => {
+                                    e.preventDefault();
+                                    try {
+                                        await fetch('/open_output_folder', { method: 'POST' });
+                                    } catch (err) {
+                                        console.error("Failed to open folder", err);
+                                        showStatus("Could not open folder automatically.", "error");
+                                    }
+                                };
+
+                                // Update Button Text/Icon to "Open Output Folder"
+                                downloadBtn.innerHTML = `
+                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 19a2 2 0 01-2-2V7a2 2 0 012-2h4l2 2h4a2 2 0 012 2v1M5 19h14a2 2 0 002-2v-5a2 2 0 00-2-2H9a2 2 0 00-2 2v5a2 2 0 01-2 2z" />
+                                </svg> Open Output Folder`;
+
+                                downloadSection.classList.add('visible');
+
+                                // Reset UI elements
+                                document.querySelector('.mode-tabs').style.display = 'none';
+                                createView.style.display = 'none';
+                                resetAppBtn.style.display = 'flex';
+
+                            } else {
+                                const msg = data.status === 'stopped' ? 'Processing Stopped.' : 'Processing Complete!';
+                                showStatus(`${msg} Files saved to output folder. Use "Load Existing" to view specific frames.`, 'success');
+                            }
+                        }
+                    }
+                } catch (e) { console.error(e); }
+            }, 1500);
+        }
+
+        function handleSuccess(data) {
+            document.querySelector('.mode-tabs').style.display = 'none';
+            createView.style.display = 'none';
+            loadView.style.display = 'none';
+            webcamView.style.display = 'none';
+            resetAppBtn.style.display = 'flex';
+            if (data.type === 'video') setupVideoPlayback(data);
+            else { if (data.download_url) { downloadBtn.href = data.download_url; downloadSection.classList.add('visible'); } loadSplatViewer(data.view_url, true); }
+        }
+
+        /* --- VIDEO PLAYBACK LOGIC --- */
+        async function setupVideoPlayback(data, existingBlobs = null) {
+            gpuWarning.style.display = 'block';
+
+            videoData.blobUrls = [];
+            videoData.currentFrame = 0;
+            videoControls.classList.add('visible');
+            vidPlayBtn.disabled = true;
+            vidPlayBtn.textContent = "⏳";
+
+            let urls = existingBlobs || [];
+            if (!existingBlobs) {
+                if (!data.ply_files || data.ply_files.length === 0) { showStatus("No frames.", "error"); return; }
+                const total = data.ply_files.length;
+                showStatus(`Downloading ${total} frames...`, 'info');
+                progressBar.classList.add('visible');
+                try {
+                    for (let i = 0; i < total; i++) {
+                        const url = data.base_url + data.ply_files[i];
+                        const percent = Math.round((i / total) * 100);
+                        progressBarFill.style.width = percent + '%';
+                        progressBarText.textContent = `Downloading frame ${i + 1}/${total}`;
+                        const response = await fetch(url);
+                        if (!response.ok) throw new Error(`Failed to fetch frame ${i}`);
+                        const blob = await response.blob();
+                        urls.push(URL.createObjectURL(blob));
+                    }
+                } catch (e) { showStatus("Error buffering: " + e.message, "error"); progressBar.classList.remove('visible'); if (urls.length === 0) return; }
+            }
+
+            videoData.blobUrls = urls;
+
+            progressBar.classList.add('visible');
+            progressBarFill.style.width = '0%';
+            progressBarText.textContent = `Preparing to load ${urls.length} frames into GPU...`;
+
+            showStatus(`<b>Loading ${urls.length} frames into GPU memory...</b><br>Please be patient.`, 'info');
+
+            if (!viewer) loadSplatViewer('', true);
+
+            const checkViewer = setInterval(() => {
+                if (viewer && viewer.ready) {
+                    clearInterval(checkViewer);
+                    progressBar.classList.add('visible');
+
+                    viewer.preloadFrames(urls, (loaded, total) => {
+                        const percent = Math.round((loaded / total) * 100);
+                        progressBarFill.style.width = percent + '%';
+                        progressBarText.textContent = `Loading into GPU: ${loaded}/${total}`;
+                    }).then(() => {
+                        progressBar.classList.remove('visible');
+                        showStatus("Ready to play.", "success");
+                        setTimeout(() => {
+                            finishVideoSetup(data.fps || 30);
+                        }, 500);
+                    });
+                }
+            }, 100);
+        }
+
+        function finishVideoSetup(fps) {
+            videoData.fps = fps;
+            vidScrubber.max = videoData.blobUrls.length - 1;
+            vidScrubber.value = 0;
+            vidPlayBtn.disabled = false;
+            vidPlayBtn.textContent = "▶";
+        }
+
+        function toggleVideoPlayback() {
+            if (videoData.isPlaying) pauseVideo(); else playVideo();
+        }
+
+        function playVideo() {
+            if (!viewer) return;
+            videoData.isPlaying = true;
+            vidPlayBtn.textContent = "⏸";
+            const frameTime = 1000 / videoData.fps;
+            videoData.timer = setInterval(() => {
+                let nextFrame = videoData.currentFrame + 1;
+                if (nextFrame >= videoData.blobUrls.length) nextFrame = 0;
+                goToFrame(nextFrame);
+            }, frameTime);
+        }
+
+        function pauseVideo() {
+            videoData.isPlaying = false;
+            vidPlayBtn.textContent = "▶";
+            clearInterval(videoData.timer);
+        }
+
+        function goToFrame(index) {
+            if (index < 0 || index >= videoData.blobUrls.length) return;
+            videoData.currentFrame = index;
+            vidScrubber.value = index;
+            vidInfo.textContent = `Frame: ${index + 1} / ${videoData.blobUrls.length}`;
+            if (viewer) viewer.showFrame(index);
+        }
+
+        /* --- VIEWER LOGIC --- */
+        function loadSplatViewer(url, resetCamera = true) {
+            if (viewer) {
+                if (url) viewer.loadPly(url, resetCamera);
+                return;
+            }
+            viewerPlaceholder.style.display = 'none';
+            if (!activeJobId) { progressBar.classList.add('visible'); progressBarFill.style.width = '0%'; progressBarText.textContent = 'Loading 3D model...'; }
+            if (viewer) { if (viewer.dispose) viewer.dispose(); viewer = null; }
+            const oldCanvas = document.getElementById('splat-canvas');
+            if (oldCanvas) oldCanvas.remove();
+            setTimeout(() => {
+                splatCanvas = document.createElement('canvas');
+                splatCanvas.id = 'splat-canvas';
+                splatCanvas.classList.add('visible');
+                viewerContainer.insertBefore(splatCanvas, topControls);
+                try {
+                    if (typeof GaussianSplatViewer === 'undefined') throw new Error("Viewer script not loaded");
+                    viewer = new GaussianSplatViewer(splatCanvas, {
+                        onProgress: (percent) => { if (resetCamera && !activeJobId) { progressBarFill.style.width = percent + '%'; if (percent < 50) progressBarText.textContent = `Downloading: ${percent * 2}%`; else progressBarText.textContent = `Processing: ${(percent - 50) * 2}%`; } },
+                        onLoad: () => { if (!activeJobId) progressBar.classList.remove('visible'); splatCanvas.classList.add('visible'); viewerControls.classList.add('visible'); topControls.classList.add('visible'); if (resetCamera) { viewer.resetCamera(); if (viewer.camera) viewer.camera.position.z -= 3.0; } if (!isVideoMode && !activeJobId) { showStatus('Loaded!', 'success'); } window.dispatchEvent(new Event('resize')); },
+                        onError: (error) => { console.error(error); if (!activeJobId) progressBar.classList.remove('visible'); viewerPlaceholder.style.display = 'block'; showStatus('Error: ' + error.message, 'error'); }
+                    });
+                    if (url) viewer.loadPly(url, resetCamera);
+                } catch (err) { console.error(err); showStatus("Viewer initialization failed. Try refreshing.", "error"); }
+            }, 50);
+        }
+
+        async function checkServerStatus() {
+            try { const response = await fetch('/status'); const data = await response.json(); let deviceText = data.device; let deviceClass = ''; if (data.cuda_available) { deviceClass = 'cuda'; deviceText = 'CUDA GPU'; } else if (data.device === 'mps') { deviceText = 'Apple MPS'; } else { deviceText = 'CPU'; } deviceInfo.innerHTML = `<span class="device-badge ${deviceClass}">${deviceText}</span>`; } catch (error) { console.error('Server status check failed:', error); }
+        }
+
+        function showStatus(message, type) { statusMessage.textContent = message; statusMessage.className = `status-message visible ${type}`; }
+        function hideStatus() { } // Disabled as requested
+        function toggleFullscreen() { if (!document.fullscreenElement && !document.webkitFullscreenElement) { if (viewerContainer.requestFullscreen) viewerContainer.requestFullscreen(); else if (viewerContainer.webkitRequestFullscreen) viewerContainer.webkitRequestFullscreen(); } else { if (document.exitFullscreen) document.exitFullscreen(); else if (document.webkitExitFullscreen) document.webkitExitFullscreen(); } }
+        function updateFullscreenIcon() { if (document.fullscreenElement || document.webkitFullscreenElement) { iconExpand.style.display = 'none'; iconCompress.style.display = 'block'; } else { iconExpand.style.display = 'block'; iconCompress.style.display = 'none'; } }
+    </script>
+</body>
+
+</html>
