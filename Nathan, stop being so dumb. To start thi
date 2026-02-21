@@ -1,0 +1,10 @@
+Nathan, stop being so dumb. To start this, do the following: 
+
+1) Copy pasta the following in terminal to start the backend server
+
+   cd /Users/npatton/Documents/GitHub/ml-sharp   
+   uvicorn backend.main:app --reload --port 8000
+
+2) Copy pasta to get the front end going
+   cd /Users/npatton/Documents/GitHub/ml-sharp/web-client   
+   npm run dev
