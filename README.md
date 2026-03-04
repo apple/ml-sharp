@@ -53,6 +53,16 @@ To use a manually downloaded checkpoint, specify it with the `-c` flag:
 sharp predict -i /path/to/input/images -o /path/to/output/gaussians -c sharp_2572gikvuh.pt
 ```
 
+### Reduced-precision inference
+
+Use the `--precision` flag to run the heavy encoder modules in bfloat16 or float16. This can significantly reduce inference time (up to ~2x on supported hardware) with minimal impact on output quality:
+
+```
+sharp predict -i /path/to/input/images -o /path/to/output/gaussians --precision bfloat16
+```
+
+Accepted values are `float32` (default), `bfloat16`, and `float16`. Only the large encoder/backbone modules are cast to reduced precision; lightweight heads remain in float32 for numerical stability.
+
 The results will be 3D gaussian splats (3DGS) in the output folder. The 3DGS `.ply` files are compatible to various public 3DGS renderers. We follow the OpenCV coordinate convention (x right, y down, z forward). The 3DGS scene center is roughly at (0, 0, +z). When dealing with 3rdparty renderers, please scale and rotate to re-center the scene accordingly.
 
 ### Rendering trajectories (CUDA GPU only)
