@@ -6,9 +6,10 @@ import {
   FileJson, MapPin, CheckCircle, AlertCircle, Image as ImageIcon
 } from 'lucide-react';
 import * as THREE from 'three';
-import axios from 'axios';
 import { Canvas } from '@react-three/fiber';
 import { Splat, OrbitControls, Loader } from '@react-three/drei';
+import { checkEngineHealth, postForm, getJson, getBlobUrl } from './api';
+import EngineStatus from './EngineStatus';
 
 /**
  * SHARP Web Interface
@@ -32,20 +33,9 @@ const SharpApp = () => {
   const [stationImages, setStationImages] = useState([]); // array of File objects
   const [matchStatus, setMatchStatus] = useState(null); // { matched: [], unmatched: [] }
   const [isMultistation, setIsMultistation] = useState(false);
-
-  // Constants
-  const API_BASE = 'http://localhost:8000';
-
-  // Check backend health
-  const checkBackendHealth = async () => {
-    try {
-      const response = await axios.get(`${API_BASE}/`, { timeout: 3000 });
-      return response.data.status === 'running';
-    } catch (error) {
-      console.error("Backend health check failed:", error);
-      return false;
-    }
-  };
+  const [engineConnected, setEngineConnected] = useState(false);
+  const [showEngineSetup, setShowEngineSetup] = useState(false);
+  const [errorMessage, setErrorMessage] = useState(null); // processing-level error banner
 
   // Detect if an image is a 360 equirectangular panorama (aspect ratio ~2:1)
   const detect360Image = (file) => {
@@ -120,22 +110,17 @@ const SharpApp = () => {
   };
 
   const startMultistationProcessing = async () => {
+    setErrorMessage(null);
     setAppState('processing');
     setProgress(0);
     setIsMultistation(true);
-    setStatusMessage("Checking backend connection...");
+    setStatusMessage("Checking engine connection...");
 
-    const isBackendHealthy = await checkBackendHealth();
-    if (!isBackendHealthy) {
+    const isEngineHealthy = await checkEngineHealth();
+    if (!isEngineHealthy) {
       setAppState('idle');
       setStatusMessage("");
-      alert(
-        "Backend server is not reachable.\n\n" +
-        "Please ensure the backend is running:\n" +
-        "1. Open a terminal\n" +
-        "2. Navigate to the project root\n" +
-        "3. Run: uvicorn backend.main:app --reload --port 8000"
-      );
+      setShowEngineSetup(true);
       return;
     }
 
@@ -148,13 +133,12 @@ const SharpApp = () => {
     }
 
     try {
-      const submitResponse = await axios.post(`${API_BASE}/predict-multistation`, formData, {
+      const submitData = await postForm('/predict-multistation', formData, {
         timeout: 120000, // 2 minute timeout for multi-file upload
-        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      const jobId = submitResponse.data.job_id;
-      const stationsMatched = submitResponse.data.stations_matched;
+      const jobId = submitData.job_id;
+      const stationsMatched = submitData.stations_matched;
       console.log(`Multi-station job submitted: ${jobId} (${stationsMatched} stations)`);
 
       // Poll with high tolerance for multi-station jobs
@@ -167,10 +151,7 @@ const SharpApp = () => {
       const poll = async () => {
         if (cancelled) return;
         try {
-          const statusResponse = await axios.get(`${API_BASE}/jobs/${jobId}`, {
-            timeout: POLL_TIMEOUT,
-          });
-          const job = statusResponse.data;
+          const job = await getJson(`/jobs/${jobId}`, { timeout: POLL_TIMEOUT });
 
           pollErrorCount = 0;
           setProgress(job.progress);
@@ -178,12 +159,10 @@ const SharpApp = () => {
 
           if (job.status === 'complete') {
             setStatusMessage("Downloading result...");
-            const resultResponse = await axios.get(`${API_BASE}/jobs/${jobId}/result`, {
-              responseType: 'blob',
+            const splatUrl = await getBlobUrl(`/jobs/${jobId}/result`, {
               timeout: 600000, // 10 minute timeout for very large multi-station splats
             });
 
-            const splatUrl = window.URL.createObjectURL(new Blob([resultResponse.data]));
             setDownloadUrl(splatUrl);
             setAppState('complete');
             return;
@@ -195,20 +174,14 @@ const SharpApp = () => {
           console.error(`Polling error (${pollErrorCount}/${MAX_POLL_ERRORS}):`, pollError);
 
           if (pollError.message && pollError.message.includes("Job failed")) {
-            setStatusMessage("Error: " + pollError.message);
+            setStatusMessage("");
             setAppState('idle');
-            alert("Processing failed: " + pollError.message);
+            setErrorMessage("Processing failed: " + pollError.message);
             return;
           } else if (pollErrorCount >= MAX_POLL_ERRORS) {
-            setStatusMessage("Connection lost");
+            setStatusMessage("");
             setAppState('idle');
-            alert(
-              "Lost connection to backend server.\n\n" +
-              "The backend may have stopped responding. Please check:\n" +
-              "1. Is the backend still running?\n" +
-              "2. Check the backend terminal for errors\n" +
-              "3. Try refreshing the page and uploading again"
-            );
+            setShowEngineSetup(true);
             return;
           }
         }
@@ -224,16 +197,11 @@ const SharpApp = () => {
       console.error("Error starting multi-station job:", error);
       setStatusMessage("");
       setAppState('idle');
-
-      let errorMessage = "Failed to start multi-station processing.\n\n";
-      if (error.response) {
-        errorMessage += `Server error (${error.response.status}): ${error.response.data?.detail || error.response.statusText}`;
-      } else if (error.request) {
-        errorMessage += "Backend server did not respond.";
+      if (error.detail) {
+        setErrorMessage(`Engine error: ${error.detail}`);
       } else {
-        errorMessage += `Error: ${error.message}`;
+        setShowEngineSetup(true);
       }
-      alert(errorMessage);
     }
   };
 
@@ -298,28 +266,22 @@ const SharpApp = () => {
   };
 
   const startProcessing = async (file, use360 = false) => {
+    setErrorMessage(null);
     setAppState('processing');
     setProgress(0);
-    setStatusMessage("Checking backend connection...");
+    setStatusMessage("Checking engine connection...");
 
-    // First, check if backend is reachable
-    const isBackendHealthy = await checkBackendHealth();
-    if (!isBackendHealthy) {
+    // First, check if the local engine is reachable
+    const isEngineHealthy = await checkEngineHealth();
+    if (!isEngineHealthy) {
       setAppState('idle');
       setStatusMessage("");
-      alert(
-        "Backend server is not reachable.\n\n" +
-        "Please ensure the backend is running:\n" +
-        "1. Open a terminal\n" +
-        "2. Navigate to the project root\n" +
-        "3. Run: uvicorn backend.main:app --reload --port 8000\n\n" +
-        "The backend should be running at http://localhost:8000"
-      );
+      setShowEngineSetup(true);
       return;
     }
 
     // Choose endpoint based on 360 detection
-    const endpoint = use360 ? `${API_BASE}/predict360` : `${API_BASE}/predict`;
+    const endpoint = use360 ? '/predict360' : '/predict';
     setStatusMessage(use360 ? "Uploading 360 panorama..." : "Initializing upload...");
 
     const formData = new FormData();
@@ -328,13 +290,10 @@ const SharpApp = () => {
     try {
       // 1. Submit Job
       setStatusMessage(use360 ? "Uploading 360 panorama..." : "Uploading image...");
-      const submitResponse = await axios.post(endpoint, formData, {
+      const submitData = await postForm(endpoint, formData, {
         timeout: 30000, // 30 second timeout for upload
-        headers: {
-          'Content-Type': 'multipart/form-data',
-        },
       });
-      const jobId = submitResponse.data.job_id;
+      const jobId = submitData.job_id;
 
       console.log("Job submitted:", jobId);
 
@@ -348,10 +307,7 @@ const SharpApp = () => {
       const poll = async () => {
         if (cancelled) return;
         try {
-          const statusResponse = await axios.get(`${API_BASE}/jobs/${jobId}`, {
-            timeout: POLL_TIMEOUT,
-          });
-          const job = statusResponse.data;
+          const job = await getJson(`/jobs/${jobId}`, { timeout: POLL_TIMEOUT });
 
           pollErrorCount = 0; // Reset error count on success
           setProgress(job.progress);
@@ -360,12 +316,10 @@ const SharpApp = () => {
           if (job.status === 'complete') {
             // 3. Get Result
             setStatusMessage("Downloading result...");
-            const resultResponse = await axios.get(`${API_BASE}/jobs/${jobId}/result`, {
-              responseType: 'blob',
+            const splatUrl = await getBlobUrl(`/jobs/${jobId}/result`, {
               timeout: 300000, // 5 minute timeout for large 360 splat downloads
             });
 
-            const splatUrl = window.URL.createObjectURL(new Blob([resultResponse.data]));
             setDownloadUrl(splatUrl);
             setAppState('complete');
             return; // Done - don't schedule another poll
@@ -377,21 +331,15 @@ const SharpApp = () => {
           console.error(`Polling error (${pollErrorCount}/${MAX_POLL_ERRORS}):`, pollError);
 
           if (pollError.message && pollError.message.includes("Job failed")) {
-            setStatusMessage("Error: " + pollError.message);
+            setStatusMessage("");
             setAppState('idle');
-            alert("Processing failed: " + pollError.message);
+            setErrorMessage("Processing failed: " + pollError.message);
             return; // Done - don't schedule another poll
           } else if (pollErrorCount >= MAX_POLL_ERRORS) {
-            // Too many consecutive errors, likely backend issue
-            setStatusMessage("Connection lost");
+            // Too many consecutive errors, likely the engine stopped
+            setStatusMessage("");
             setAppState('idle');
-            alert(
-              "Lost connection to backend server.\n\n" +
-              "The backend may have stopped responding. Please check:\n" +
-              "1. Is the backend still running?\n" +
-              "2. Check the backend terminal for errors\n" +
-              "3. Try refreshing the page and uploading again"
-            );
+            setShowEngineSetup(true);
             return; // Done - don't schedule another poll
           }
           // Otherwise, keep polling (transient error)
@@ -410,27 +358,12 @@ const SharpApp = () => {
       console.error("Error starting job:", error);
       setStatusMessage("");
       setAppState('idle');
-      
-      let errorMessage = "Failed to start processing.\n\n";
-      
-      if (error.code === 'ECONNREFUSED' || error.message.includes('Network Error')) {
-        errorMessage += "Cannot connect to backend server.\n\n";
-        errorMessage += "Please ensure the backend is running:\n";
-        errorMessage += "1. Open a terminal\n";
-        errorMessage += "2. Navigate to the project root\n";
-        errorMessage += "3. Run: uvicorn backend.main:app --reload --port 8000\n\n";
-        errorMessage += "The backend should be running at http://localhost:8000";
-      } else if (error.response) {
-        // Server responded with error status
-        errorMessage += `Server error (${error.response.status}): ${error.response.data?.detail || error.response.statusText}`;
-      } else if (error.request) {
-        // Request made but no response
-        errorMessage += "Backend server did not respond. Please check if it's running.";
+      if (error.detail) {
+        setErrorMessage(`Engine error: ${error.detail}`);
       } else {
-        errorMessage += `Error: ${error.message}`;
+        // Likely unreachable engine or denied local-network permission.
+        setShowEngineSetup(true);
       }
-      
-      alert(errorMessage);
     }
   };
 
@@ -438,6 +371,7 @@ const SharpApp = () => {
     setAppState('idle');
     setUploadedImage(null);
     setProgress(0);
+    setErrorMessage(null);
     setDownloadUrl(null);
     setCameraTarget(null);
     setIsRecentering(false);
@@ -468,6 +402,14 @@ const SharpApp = () => {
           </span>
         </div>
         <div className="flex items-center gap-6 text-sm font-medium text-neutral-400">
+          <EngineStatus
+            onConnectedChange={(connected) => {
+              setEngineConnected(connected);
+              if (connected) setShowEngineSetup(false);
+            }}
+            onClose={() => setShowEngineSetup(false)}
+            forceOpen={showEngineSetup}
+          />
           <a
             href="https://github.com/apple/ml-sharp"
             target="_blank"
@@ -494,6 +436,31 @@ const SharpApp = () => {
         {/* State: Idle / Drop Zone */}
         {appState === 'idle' && (
           <div className="w-full max-w-3xl flex flex-col items-center gap-6">
+            {/* Processing error banner */}
+            {errorMessage && (
+              <div className="w-full max-w-2xl flex items-start gap-3 rounded-2xl bg-red-500/5 border border-red-500/20 p-4 text-sm text-red-200">
+                <AlertCircle size={18} className="text-red-400 shrink-0 mt-0.5" />
+                <span className="flex-1">{errorMessage}</span>
+                <button onClick={() => setErrorMessage(null)} className="text-red-400/60 hover:text-red-300">
+                  <X size={16} />
+                </button>
+              </div>
+            )}
+
+            {/* Engine-not-detected prompt */}
+            {!engineConnected && !errorMessage && (
+              <button
+                onClick={() => setShowEngineSetup(true)}
+                className="w-full max-w-2xl flex items-center gap-3 rounded-2xl bg-yellow-500/5 border border-yellow-500/20 p-4 text-sm text-yellow-200 hover:bg-yellow-500/10 transition-colors text-left"
+              >
+                <AlertCircle size={18} className="text-yellow-400 shrink-0" />
+                <span className="flex-1">
+                  Local SHARP Engine not detected. Start it on this computer to process images.
+                </span>
+                <span className="text-yellow-400 font-medium shrink-0">Set up →</span>
+              </button>
+            )}
+
             {/* Mode Toggle */}
             <div className="flex items-center gap-1 p-1 bg-neutral-900/60 rounded-full border border-white/5 backdrop-blur-sm">
               <button

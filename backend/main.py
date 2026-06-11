@@ -8,9 +8,10 @@ import uuid
 import asyncio
 from contextlib import asynccontextmanager
 from typing import Dict, Any, List
-from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException
+from fastapi import FastAPI, UploadFile, File, BackgroundTasks, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 import json
 import tempfile
 
@@ -105,14 +106,62 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-# Enable CORS for frontend
+
+class PrivateNetworkAccessMiddleware(BaseHTTPMiddleware):
+    """Answer legacy Chromium Private Network Access (PNA) preflights.
+
+    When the website is served over HTTPS (e.g. Vercel) but the engine runs at
+    http://localhost on the visitor's machine, older Chromium versions send a
+    preflight with `Access-Control-Request-Private-Network: true` and require the
+    response to echo `Access-Control-Allow-Private-Network: true`. Newer Chrome
+    (142+) uses a user permission prompt instead and ignores this header, so adding
+    it is harmless and only helps older browsers.
+    """
+
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+        if request.headers.get("Access-Control-Request-Private-Network") == "true":
+            response.headers["Access-Control-Allow-Private-Network"] = "true"
+        return response
+
+
+# Allowed origins for the hosted frontend. The deployed site's origin must be
+# listed (CORS), plus the Vite dev server. Override with SHARP_ALLOWED_ORIGINS
+# (comma-separated) to add your Vercel URL, e.g.
+#   SHARP_ALLOWED_ORIGINS="https://sharp.vercel.app"
+_default_origins = [
+    "http://localhost:5173",  # Vite dev server
+    "http://127.0.0.1:5173",
+    "http://localhost:4173",  # Vite preview server
+    "http://127.0.0.1:4173",
+]
+_env_origins = os.environ.get("SHARP_ALLOWED_ORIGINS", "").strip()
+if _env_origins == "*":
+    ALLOWED_ORIGINS = ["*"]
+elif _env_origins:
+    ALLOWED_ORIGINS = _default_origins + [
+        o.strip() for o in _env_origins.split(",") if o.strip()
+    ]
+else:
+    # Default: allow any origin. We send no cookies, so this is safe and lets the
+    # engine work from any deployed frontend without per-user configuration.
+    ALLOWED_ORIGINS = ["*"]
+
+# Enable CORS for the frontend. allow_credentials must be False when origins is
+# "*" (the wildcard + credentials combination is rejected by browsers); we use no
+# cookies, so credentials are not needed.
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=ALLOWED_ORIGINS,
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Added LAST so it is the OUTERMOST middleware: CORSMiddleware answers (and
+# short-circuits) preflight OPTIONS requests, so the PNA header must be appended
+# on the way back out, after CORS has produced the preflight response.
+app.add_middleware(PrivateNetworkAccessMiddleware)
 
 @app.get("/")
 async def root():
